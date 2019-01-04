@@ -35,7 +35,8 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>Main</mainClass>
+                                    <!--mainClass>Main</mainClass-->
+                                    <mainClass>MINCFragmentIntent</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
