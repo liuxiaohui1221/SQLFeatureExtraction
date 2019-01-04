@@ -604,12 +604,13 @@ public class MINCFragmentIntent{
 					System.out.println("Read "+i+" lines so far");
 			}
 		}
+		System.out.println("Read "+i+" lines so far");
 		br.close();
 		return lines;
 	}
 	
 	public static ArrayList<ArrayList<String>> readLinesPerThread(int curThreadIndex, int numThreads, int numLinesPerThread, ArrayList<String> sessQueries, ArrayList<ArrayList<String>> inputSplits) throws Exception{
-		System.out.println("Splitting lines for thread "+curThreadIndex);
+		System.out.println("Splitting lines for thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
 		int i=0;
 		ArrayList<String> curThreadSplit = new ArrayList<String>();
 		String prevSessID = null;
