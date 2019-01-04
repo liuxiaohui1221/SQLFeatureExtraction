@@ -588,6 +588,7 @@ public class MINCFragmentIntent{
 	}
 	
 	public static ArrayList<String> countLines(String rawSessFile) throws Exception{
+		System.out.println("Counting lines");
 		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
 		ArrayList<String> lines = new ArrayList<String>();
 		String line = null;
@@ -608,6 +609,7 @@ public class MINCFragmentIntent{
 	}
 	
 	public static ArrayList<ArrayList<String>> readLinesPerThread(int curThreadIndex, int numThreads, int numLinesPerThread, ArrayList<String> sessQueries, ArrayList<ArrayList<String>> inputSplits) throws Exception{
+		System.out.println("Splitting lines for thread "+curThreadIndex);
 		int i=0;
 		ArrayList<String> curThreadSplit = new ArrayList<String>();
 		String prevSessID = null;
@@ -678,7 +680,9 @@ public class MINCFragmentIntent{
 	
 	public static void readFromRawSessionsFile(String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads) throws Exception{
 		deleteIfExists(intentVectorFile);
+		System.out.println("Deleted previous intent file");
 		ArrayList<ArrayList<String>> inputSplits = splitInputAcrossThreads(rawSessFile, numThreads);
+		System.out.println("Split Input Across Threads");
 		ArrayList<String> outputSplitFiles = defineOutputSplits(rawSessFile, numThreads);
 		for(int i=0; i<numThreads; i++) {
 			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(inputSplits.get(i), outputSplitFiles.get(i), schParse);
