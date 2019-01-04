@@ -591,12 +591,16 @@ public class MINCFragmentIntent{
 		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
 		ArrayList<String> lines = new ArrayList<String>();
 		String line = null;
+		int i=0;
 		while ((line=br.readLine())!=null) {
 			if(line.contains("Query") && line.contains("Session")) {
 				line = line.replace("\t"," ");
 				line = line.replaceAll("\\s+", " ");
 				line = line.trim();
 				lines.add(line);
+				i++;
+				if (i%1000000 == 0)
+					System.out.println("Read "+i+" lines so far");
 			}
 		}
 		br.close();
@@ -614,6 +618,8 @@ public class MINCFragmentIntent{
 			curThreadSplit.add(sessQueries.get(0));
 			sessQueries.remove(0);
 			i++;
+			if(i%1000000 == 0)
+				System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
 		}
 		while(i<sessQueries.size()){
 			curSessID = sessQueries.get(0).split(" ")[0];
