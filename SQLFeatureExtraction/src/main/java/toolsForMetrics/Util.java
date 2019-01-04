@@ -1,8 +1,14 @@
 package toolsForMetrics;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import net.sf.jsqlparser.expression.BinaryExpression;
@@ -17,6 +23,7 @@ import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubSelect;
+import javafx.util.Pair;
 
 /**
  * This is a service module for query similarity metrics
@@ -76,7 +83,7 @@ public class Util {
 	public static List<Expression> processSelect(Expression e) 
 	{
 		List<Expression> retVal = new ArrayList<Expression>();
-		
+
 		if (e instanceof Parenthesis) {
 			retVal.addAll(processSelect(deleteParanthesis(e)));
 		} else if (e instanceof ExistsExpression) {
@@ -221,6 +228,64 @@ public class Util {
 			return null;
 		}
 	}
+	
+	// sort a hash map by values
+	public static HashMap<String, Integer> sortByValue(HashMap<String, Integer> hm) 
+    { 
+        // Create a list from elements of HashMap 
+        List<Map.Entry<String, Integer> > list = 
+               new LinkedList<Map.Entry<String, Integer> >(hm.entrySet()); 
+  
+        // Sort the list 
+        Collections.sort(list, new Comparator<Map.Entry<String, Integer> >() { 
+            public int compare(Map.Entry<String, Integer> o1,  
+                               Map.Entry<String, Integer> o2) 
+            { 
+                return (o1.getValue()).compareTo(o2.getValue()); 
+            } 
+        }); 
+          
+        // put data from sorted list to hashmap  
+        HashMap<String, Integer> temp = new LinkedHashMap<String, Integer>(); 
+        for (Map.Entry<String, Integer> aa : list) { 
+            temp.put(aa.getKey(), aa.getValue()); 
+        } 
+        return temp; 
+    } 
+	// compare two hash sets
+		public static boolean equals(HashSet<String> set1, HashSet<String> set2){
+
+	        if(set1 == null || set2 ==null){
+	            return false;
+	        }
+	        
+	        if(set1.size()!=set2.size())
+	        		return false;
+	        
+	       for(String s:set2) {
+	    	   	if(!set1.contains(s.trim()))
+	    	   		return false;
+	       }
+	       return true;
+	        //return set1.containsAll(set2);
+
+	    }
+	
+	// compare two hash sets
+	public static boolean equals(Pair<String,String> set1, HashSet<String> set2){
+
+        if(set1 == null || set2 ==null){
+            return false;
+        }
+        
+       for(String s:set2) {
+    	   	if(!set1.getKey().equals(s.trim()) && !set1.getValue().equals(s.trim()))
+    	   		return false;
+       }
+       return true;
+        //return set1.containsAll(set2);
+
+    }
 
 	
 }
