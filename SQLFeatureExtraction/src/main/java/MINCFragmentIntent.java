@@ -594,7 +594,7 @@ public class MINCFragmentIntent{
 		String line = null;
 		int i=0;
 		int absCount = 0;
-		while ((line=br.readLine())!=null) {
+		while ((line=br.readLine())!=null/* && absCount<5000000*/) {
 			if(line.contains("Query")) {
 				line = line.replace("\t"," ");
 				line = line.replaceAll("\\s+", " ");
@@ -623,8 +623,10 @@ public class MINCFragmentIntent{
 			curThreadSplit.add(sessQueries.get(0));
 			sessQueries.remove(0);
 			i++;
-			if(i%100000 == 0)
+			//if(i%100000 == 0) {
+				System.out.println("curSessID: "+curSessID+", prevSessID: "+prevSessID);
 				System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
+			//}
 		}
 		while(i<sessQueries.size()){
 			curSessID = sessQueries.get(0).split(" ")[0];
