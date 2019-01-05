@@ -616,18 +616,18 @@ public class MINCFragmentIntent{
 		int i=0;
 		ArrayList<String> curThreadSplit = new ArrayList<String>();
 		String prevSessID = null;
-		String curSessID = null;
 		while(i<numLinesPerThread) {
-			prevSessID = curSessID;
-			curSessID = sessQueries.get(0).split(" ")[0];
+			if(i==numLinesPerThread-1) {
+				prevSessID = sessQueries.get(0).split(" ")[0];
+			}
 			curThreadSplit.add(sessQueries.get(0));
 			sessQueries.remove(0);
 			i++;
 			if(i%100000 == 0) {
-				System.out.println("curSessID: "+curSessID+", prevSessID: "+prevSessID);
 				System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+ ", sessQueries: "+sessQueries.size()+", numLinesPerThread: "+numLinesPerThread);
 			}
 		}
+		String curSessID = null;
 		while(i<sessQueries.size()){
 			curSessID = sessQueries.get(0).split(" ")[0];
 			if(curThreadIndex != numThreads-1 && !curSessID.equals(prevSessID))
