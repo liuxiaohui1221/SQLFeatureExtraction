@@ -588,7 +588,7 @@ public class MINCFragmentIntent{
 	}
 	
 	public static ArrayList<String> countLines(String rawSessFile) throws Exception{
-		System.out.println("Counting lines");
+		System.out.println("Counting lines from "+rawSessFile);
 		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
 		ArrayList<String> lines = new ArrayList<String>();
 		String line = null;
