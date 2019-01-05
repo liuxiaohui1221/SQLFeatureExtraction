@@ -625,11 +625,11 @@ public class MINCFragmentIntent{
 				break;
 			runningIndex++;
 		}
-		int upperIndexBoundPerThread = runningIndex-1;
-		Pair<Integer,Integer> lowerUpperIndexBounds = new Pair<>(lowerIndexPerThread, upperIndexBoundPerThread);
+		int upperIndexPerThread = runningIndex-1;
+		Pair<Integer,Integer> lowerUpperIndexBounds = new Pair<>(lowerIndexPerThread, upperIndexPerThread);
 		inputSplits.add(lowerUpperIndexBounds);
-		int numLinesAssigned = upperIndexBoundPerThread-lowerIndexPerThread+1;
-		System.out.println("Assigned "+numLinesAssigned+" lines to thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
+		int numLinesAssigned = upperIndexPerThread-lowerIndexPerThread+1;
+		System.out.println("Assigned "+numLinesAssigned+" lines to thread "+curThreadIndex+", lowerIndex: "+lowerIndexPerThread+", upperIndex: "+upperIndexPerThread);
 		return inputSplits;
 	}
 	
