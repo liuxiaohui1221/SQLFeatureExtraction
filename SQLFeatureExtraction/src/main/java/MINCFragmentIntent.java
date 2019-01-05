@@ -625,7 +625,7 @@ public class MINCFragmentIntent{
 			i++;
 			if(i%100000 == 0) {
 				System.out.println("curSessID: "+curSessID+", prevSessID: "+prevSessID);
-				System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
+				System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+ ", sessQueries: "+sessQueries.size()+", numLinesPerThread: "+numLinesPerThread);
 			}
 		}
 		while(i<sessQueries.size()){
