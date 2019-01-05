@@ -594,7 +594,7 @@ public class MINCFragmentIntent{
 		String line = null;
 		int i=0;
 		while ((line=br.readLine())!=null) {
-			if(line.contains("Query") && line.contains("Session")) {
+			//if(line.contains("Query") && line.contains("Session")) {
 				line = line.replace("\t"," ");
 				line = line.replaceAll("\\s+", " ");
 				line = line.trim();
@@ -602,7 +602,7 @@ public class MINCFragmentIntent{
 				i++;
 				//if (i%1000000 == 0)
 					System.out.println("Read "+i+" lines so far");
-			}
+			//}
 		}
 		System.out.println("Read "+i+" lines so far");
 		br.close();

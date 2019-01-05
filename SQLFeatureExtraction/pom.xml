@@ -30,19 +30,7 @@
                     </execution>
                 </executions>
                 <configuration>
-					<!--mainClass>com.ibm.athena.features.SVMFeatureBuilderPubMed</mainClass-->
-					<mainClass>MINCFragmentIntent</mainClass>
-					<!--mainClass>com.ibm.kun.ActiveLearning.ExampleSelector_SVM_Bootstrap_Multiclass</mainClass-->
-					<!--mainClass>com.ibm.athena.learn.SVMLearnerMulticlass</mainClass-->
-					<!--mainClass>com.ibm.athena.features.SVMKFoldMulticlass</mainClass-->
-					<!--mainClass>com.ibm.athena.features.SVMFeatureBuilderMulticlass</mainClass-->
-					<!--mainClass>com.ibm.athena.learn.SVMWekaLearner</mainClass-->
-                    <!--mainClass>com.ibm.athena.features.SVMKFold</mainClass-->
-					<!--mainClass>com.ibm.athena.features.SVMFeatureBuilder</mainClass-->
-					<!--mainClass>com.ibm.athena.learn.SVMLearner</mainClass-->
-                    <!--mainClass>com.ibm.ruan.api.Main</mainClass-->
-                    <!--mainClass>com.ibm.kun.ActiveLearning.ActiveLearner_RuleRefiner_MoreGeneralRuleMinusTest</mainClass-->
-					<!--mainClass>com.ibm.ruan.api.PredicatesResource</mainClass-->
+					<mainClass>MINCFragmentIntent</mainClass>			
                 </configuration>
             </plugin>
 			<plugin>
