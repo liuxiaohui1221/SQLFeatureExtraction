@@ -623,10 +623,10 @@ public class MINCFragmentIntent{
 			curThreadSplit.add(sessQueries.get(0));
 			sessQueries.remove(0);
 			i++;
-			//if(i%100000 == 0) {
+			if(i%100000 == 0) {
 				System.out.println("curSessID: "+curSessID+", prevSessID: "+prevSessID);
 				System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
-			//}
+			}
 		}
 		while(i<sessQueries.size()){
 			curSessID = sessQueries.get(0).split(" ")[0];
