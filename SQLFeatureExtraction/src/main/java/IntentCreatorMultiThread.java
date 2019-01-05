@@ -38,7 +38,7 @@ public class IntentCreatorMultiThread extends Thread{
 			String prevSessionID = "";
 			String concLine = "";
 			for(String line:this.inputLines) {
-				if(line.contains("Query") && line.contains("Session")) {
+				if(line.contains("Query")) {
 					String[] tokens = line.trim().split(" ");
 					String query = "";
 					for(int i=2; i<tokens.length; i++) {
