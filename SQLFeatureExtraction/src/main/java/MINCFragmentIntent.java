@@ -593,6 +593,7 @@ public class MINCFragmentIntent{
 		ArrayList<String> lines = new ArrayList<String>();
 		String line = null;
 		int i=0;
+		int absCount = 0;
 		while ((line=br.readLine())!=null) {
 			if(line.contains("Query")) {
 				line = line.replace("\t"," ");
@@ -601,10 +602,11 @@ public class MINCFragmentIntent{
 				lines.add(line);
 				i++;
 				if (i%1000000 == 0)
-					System.out.println("Read "+i+" lines so far");
+					System.out.println("Read "+i+" lines so far and absCount: "+absCount);
 			}
+			absCount++;
 		}
-		System.out.println("Read "+i+" lines so far");
+		System.out.println("Read "+i+" lines so far and done with absCount: "+absCount);
 		br.close();
 		return lines;
 	}
