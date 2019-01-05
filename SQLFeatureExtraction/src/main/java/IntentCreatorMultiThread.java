@@ -23,12 +23,14 @@ public class IntentCreatorMultiThread extends Thread{
 	Pair<Integer,Integer> lowerUpperIndexBounds;
 	String outputFile;
 	SchemaParser schParse;
+	int threadID;
 	
-	public IntentCreatorMultiThread(ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, String outputFile, SchemaParser schParse) {
+	public IntentCreatorMultiThread(int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, String outputFile, SchemaParser schParse) {
 		this.sessQueries = sessQueries;
 		this.lowerUpperIndexBounds = lowerUpperIndexBounds;
 		this.outputFile = outputFile;
 		this.schParse = schParse;
+		this.threadID = threadID;
 	}
 	
 	public void run(){
@@ -73,7 +75,7 @@ public class IntentCreatorMultiThread extends Thread{
 								bw.append(concLine);
 								concLine = "";
 //								System.out.println("Query: "+query);
-								System.out.println("Covered SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
+								System.out.println("ThreadID: "+this.threadID+", Covered SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
 							}
 						}
 					} catch(Exception e) {
