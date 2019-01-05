@@ -633,6 +633,7 @@ public class MINCFragmentIntent{
 			i++;
 		}
 		inputSplits.add(curThreadSplit);
+		System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
 		return inputSplits;
 	}
 	
