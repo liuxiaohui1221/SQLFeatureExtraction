@@ -67,15 +67,13 @@ public class IntentCreatorMultiThread extends Thread{
 							} else
 								queryID++;
 							absQueryID++;
-							if(absQueryID % 100000 == 0) {
-							//	System.out.println("Query: "+query);
-								System.out.println("Covered SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
-							}
 							String to_append = "Session "+sessionID+", Query "+queryID+"; OrigQuery: "+query+";"+fragmentObj.getIntentBitVector()+"\n";
 							concLine += to_append;
-							if(absQueryID % 10000 == 0) {
+							if(absQueryID % 100 == 0) {
 								bw.append(concLine);
 								concLine = "";
+//								System.out.println("Query: "+query);
+								System.out.println("Covered SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
 							}
 						}
 					} catch(Exception e) {

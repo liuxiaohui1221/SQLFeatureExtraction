@@ -686,6 +686,7 @@ public class MINCFragmentIntent{
 		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(sessQueries, numThreads);
 		System.out.println("Split Input Across Threads");
 		ArrayList<String> outputSplitFiles = defineOutputSplits(rawSessFile, numThreads);
+		System.out.println("Defined Output File Splits Across Threads");
 		for(int i=0; i<numThreads; i++) {
 			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse);
 			intentMT.start();
