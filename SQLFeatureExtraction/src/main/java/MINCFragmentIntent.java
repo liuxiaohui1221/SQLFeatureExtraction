@@ -600,7 +600,7 @@ public class MINCFragmentIntent{
 				line = line.trim();
 				lines.add(line);
 				i++;
-				if (i%1000000 == 0)
+				//if (i%1000000 == 0)
 					System.out.println("Read "+i+" lines so far");
 			}
 		}
@@ -621,7 +621,7 @@ public class MINCFragmentIntent{
 			curThreadSplit.add(sessQueries.get(0));
 			sessQueries.remove(0);
 			i++;
-			if(i%1000000 == 0)
+			//if(i%1000000 == 0)
 				System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
 		}
 		while(i<sessQueries.size()){
