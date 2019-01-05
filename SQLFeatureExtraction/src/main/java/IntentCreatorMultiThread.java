@@ -48,18 +48,19 @@ public class IntentCreatorMultiThread extends Thread{
 							query += " "+tokens[i];
 					}
 			//		System.out.println("Query: "+query);
-					String sessionID = tokens[0];
-					if(!sessionID.equals(prevSessionID)) {
-						queryID = 0;
-						prevSessionID = sessionID;
-					} else
-						queryID++;
+					
 					MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, this.schParse);
 					try {
 						boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 						/*if(validQuery)
 							fragmentObj.printIntentVector();*/
 						if(validQuery) {
+							String sessionID = tokens[0];
+							if(!sessionID.equals(prevSessionID)) {
+								queryID = 0;
+								prevSessionID = sessionID;
+							} else
+								queryID++;
 							absQueryID++;
 							if(absQueryID % 100000 == 0) {
 							//	System.out.println("Query: "+query);
