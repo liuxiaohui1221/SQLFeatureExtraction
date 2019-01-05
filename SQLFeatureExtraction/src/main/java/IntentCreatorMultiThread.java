@@ -19,12 +19,14 @@ import java.util.TreeSet;
 import javafx.util.Pair;
 
 public class IntentCreatorMultiThread extends Thread{
-	ArrayList<String> inputLines;
+	ArrayList<String> sessQueries;
+	Pair<Integer,Integer> lowerUpperIndexBounds;
 	String outputFile;
 	SchemaParser schParse;
 	
-	public IntentCreatorMultiThread(ArrayList<String> inputLines, String outputFile, SchemaParser schParse) {
-		this.inputLines = inputLines;
+	public IntentCreatorMultiThread(ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, String outputFile, SchemaParser schParse) {
+		this.sessQueries = sessQueries;
+		this.lowerUpperIndexBounds = lowerUpperIndexBounds;
 		this.outputFile = outputFile;
 		this.schParse = schParse;
 	}
@@ -37,7 +39,10 @@ public class IntentCreatorMultiThread extends Thread{
 			int queryID = 0;
 			String prevSessionID = "";
 			String concLine = "";
-			for(String line:this.inputLines) {
+			int lowerIndex = this.lowerUpperIndexBounds.getKey();
+			int upperIndex = this.lowerUpperIndexBounds.getValue();
+			for(int index = lowerIndex; index <= upperIndex; index++) {
+				String line = this.sessQueries.get(index);
 				if(line.contains("Query")) {
 					String[] tokens = line.trim().split(" ");
 					String query = "";

@@ -611,43 +611,37 @@ public class MINCFragmentIntent{
 		return lines;
 	}
 	
-	public static ArrayList<ArrayList<String>> readLinesPerThread(int curThreadIndex, int numThreads, int numLinesPerThread, ArrayList<String> sessQueries, ArrayList<ArrayList<String>> inputSplits) throws Exception{
-		System.out.println("Splitting lines for thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
+	public static ArrayList<Pair<Integer,Integer>> readLinesPerThread(int lowerIndexPerThread, int curThreadIndex, int numThreads, int numLinesPerThread, ArrayList<String> sessQueries, ArrayList<Pair<Integer,Integer>> inputSplits) throws Exception{
+		System.out.println("Splitting lines for thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread+" with lower Index: "+lowerIndexPerThread);
 		int i=0;
-		ArrayList<String> curThreadSplit = new ArrayList<String>();
-		String line = null;
-		while(i<numLinesPerThread) {
-			line = sessQueries.get(0);
-			curThreadSplit.add(line);
-			sessQueries.remove(0);
-			i++;
-			if(i%100000 == 0) {
-				System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+ ", sessQueries: "+sessQueries.size()+", numLinesPerThread: "+numLinesPerThread);
-			}
-		}
+		int runningIndex = Math.min(lowerIndexPerThread+numLinesPerThread-1, sessQueries.size()-1);
+		String line = sessQueries.get(runningIndex);
 		String prevSessID = line.split(" ")[0];
 		String curSessID = null;
-		while(i<sessQueries.size()){
-			curSessID = sessQueries.get(0).split(" ")[0];
+		runningIndex++;
+		while(runningIndex<sessQueries.size()){
+			curSessID = sessQueries.get(runningIndex).split(" ")[0];
 			if(curThreadIndex != numThreads-1 && !curSessID.equals(prevSessID))
 				break;
-			curThreadSplit.add(sessQueries.get(0));
-			sessQueries.remove(0);
-			i++;
+			runningIndex++;
 		}
-		inputSplits.add(curThreadSplit);
-		System.out.println("Assigned "+i+" lines to thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
+		int upperIndexBoundPerThread = runningIndex-1;
+		Pair<Integer,Integer> lowerUpperIndexBounds = new Pair<>(lowerIndexPerThread, upperIndexBoundPerThread);
+		inputSplits.add(lowerUpperIndexBounds);
+		int numLinesAssigned = upperIndexBoundPerThread-lowerIndexPerThread+1;
+		System.out.println("Assigned "+numLinesAssigned+" lines to thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread);
 		return inputSplits;
 	}
 	
-	public static ArrayList<ArrayList<String>>splitInputAcrossThreads(String rawSessFile, int numThreads) throws Exception{
-		ArrayList<String> sessQueries = countLines(rawSessFile);
+	public static ArrayList<Pair<Integer,Integer>> splitInputAcrossThreads(ArrayList<String> sessQueries, int numThreads) throws Exception{	
 		assert numThreads>0;
 		int numLinesPerThread = sessQueries.size()/numThreads;
 		assert numLinesPerThread > 1;
-		ArrayList<ArrayList<String>> inputSplits = new ArrayList<ArrayList<String>>();
-		for(int i=0; i<numThreads; i++) {;
-			inputSplits = readLinesPerThread(i, numThreads, numLinesPerThread, sessQueries, inputSplits);
+		ArrayList<Pair<Integer,Integer>> inputSplits = new ArrayList<Pair<Integer,Integer>>();
+		int lowerIndexPerThread = 0;
+		for(int i=0; i<numThreads; i++) {
+			inputSplits = readLinesPerThread(lowerIndexPerThread, i, numThreads, numLinesPerThread, sessQueries, inputSplits);
+			lowerIndexPerThread = inputSplits.get(i).getValue()+1; // upper index of data for current thread +1 will be the lower index for the next thread
 		}
 		return inputSplits;
 	}
@@ -687,11 +681,13 @@ public class MINCFragmentIntent{
 	public static void readFromRawSessionsFile(String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads) throws Exception{
 		deleteIfExists(intentVectorFile);
 		System.out.println("Deleted previous intent file");
-		ArrayList<ArrayList<String>> inputSplits = splitInputAcrossThreads(rawSessFile, numThreads);
+		ArrayList<String> sessQueries = countLines(rawSessFile);
+		System.out.println("Read sessQueries into main memory");
+		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(sessQueries, numThreads);
 		System.out.println("Split Input Across Threads");
 		ArrayList<String> outputSplitFiles = defineOutputSplits(rawSessFile, numThreads);
 		for(int i=0; i<numThreads; i++) {
-			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(inputSplits.get(i), outputSplitFiles.get(i), schParse);
+			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse);
 			intentMT.start();
 		}
 		concatenateOutputFiles(outputSplitFiles, intentVectorFile);
