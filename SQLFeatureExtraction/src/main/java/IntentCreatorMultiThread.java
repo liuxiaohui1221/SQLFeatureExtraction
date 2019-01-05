@@ -77,6 +77,8 @@ public class IntentCreatorMultiThread extends Thread{
 					}
 				}
 			}
+			if(!concLine.equals(""))
+				bw.append(concLine);
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
