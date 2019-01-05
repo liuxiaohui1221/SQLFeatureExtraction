@@ -14,7 +14,93 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
-    <build>
+   
+   <build>
+		  <!--finalName>${project.artifactId}-${project.version}</finalName-->
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>2.5.1</version>
+                <inherited>true</inherited>
+                <configuration>
+                    <source>1.7</source>
+                    <target>1.7</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.glassfish</groupId>
+                <artifactId>maven-glassfish-plugin</artifactId>
+                <version>1.0-alpha-4</version>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.tomcat.maven</groupId>
+                <artifactId>tomcat7-maven-plugin</artifactId>
+                <version>2.2</version>
+                <configuration>
+                    <url>http://localhost:9000/manager/text</url>
+                    <server>TomcatServer</server>
+                    <path>/HIL</path>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.2.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+					<!--mainClass>com.ibm.athena.features.SVMFeatureBuilderPubMed</mainClass-->
+					<mainClass>MINCFragmentIntent</mainClass>
+					<!--mainClass>com.ibm.kun.ActiveLearning.ExampleSelector_SVM_Bootstrap_Multiclass</mainClass-->
+					<!--mainClass>com.ibm.athena.learn.SVMLearnerMulticlass</mainClass-->
+					<!--mainClass>com.ibm.athena.features.SVMKFoldMulticlass</mainClass-->
+					<!--mainClass>com.ibm.athena.features.SVMFeatureBuilderMulticlass</mainClass-->
+					<!--mainClass>com.ibm.athena.learn.SVMWekaLearner</mainClass-->
+                    <!--mainClass>com.ibm.athena.features.SVMKFold</mainClass-->
+					<!--mainClass>com.ibm.athena.features.SVMFeatureBuilder</mainClass-->
+					<!--mainClass>com.ibm.athena.learn.SVMLearner</mainClass-->
+                    <!--mainClass>com.ibm.ruan.api.Main</mainClass-->
+                    <!--mainClass>com.ibm.kun.ActiveLearning.ActiveLearner_RuleRefiner_MoreGeneralRuleMinusTest</mainClass-->
+					<!--mainClass>com.ibm.ruan.api.PredicatesResource</mainClass-->
+                </configuration>
+            </plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.0.0</version>
+				<executions>
+				  <execution>
+					<id>copy</id>
+					<phase>package</phase>
+					<goals>
+					  <goal>copy</goal>
+					</goals>
+					<configuration>
+					  <artifactItems>
+						<artifactItem>
+						  <groupId>${project.groupId}</groupId>
+						  <artifactId>${project.artifactId}</artifactId>
+						  <version>${project.version}</version>
+						  <type>${project.packaging}</type>
+						</artifactItem>
+					  </artifactItems>
+					  <outputDirectory>lib</outputDirectory>
+					</configuration>
+				  </execution>
+				</executions>
+			</plugin>
+
+        </plugins>
+    </build>
+   
+   
+    <!--  build>
         <finalName>SQLComparison</finalName>
         <plugins>
             <plugin>
@@ -35,7 +121,6 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <!--mainClass>Main</mainClass-->
                                     <mainClass>MINCFragmentIntent</mainClass>
                                 </manifest>
                             </archive>
@@ -44,7 +129,7 @@
                 </executions>
             </plugin>
         </plugins>
-    </build>
+    </build-->
     <dependencies>
 <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
 <dependency>
