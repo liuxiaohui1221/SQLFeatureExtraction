@@ -484,7 +484,7 @@ public class SQLParser{
 	public void createQueryVector(Statement stmt1) {
 		if (stmt1 instanceof Select) {
 			Select s1=(Select) stmt1;
-			System.out.println(s1.toString());
+		//	System.out.println(s1.toString());
 			List<WithItem> with1 = s1.getWithItemsList();
 			if (with1 != null) {
 				for (int i = 0; i < with1.size(); i++) {
@@ -496,7 +496,7 @@ public class SQLParser{
 		}
 		else if(stmt1 instanceof Update) {
 			Update u1 = (Update) stmt1;
-			System.out.println(u1.toString());
+	//		System.out.println(u1.toString());
 			ArrayList<Column> cols = (ArrayList<Column>) u1.getColumns();
 			for(Column col:cols) {
 				this.projectionColumns.add(col);
@@ -509,7 +509,7 @@ public class SQLParser{
 		}
 		else if(stmt1 instanceof Insert) {
 			Insert i1 = (Insert) stmt1;
-			System.out.println(i1.toString());
+	//		System.out.println(i1.toString());
 			ArrayList<Column> cols = (ArrayList<Column>) i1.getColumns();
 			for(Column col:cols) {
 				this.projectionColumns.add(col);
@@ -519,13 +519,13 @@ public class SQLParser{
 		}
 		else if(stmt1 instanceof Delete) {
 			Delete d1 = (Delete) stmt1;
-			System.out.println(d1);
+		//	System.out.println(d1);
 			Table table = d1.getTable();
 			consumeTable(table);
 			Expression whereExpr = d1.getWhere();
 			parseWhere(whereExpr);
 		}
-		else {
+	/*	else {
 			System.err.println(stmt1 + " is not a Select/Insert/Update/Delete query");
 		}
 		System.out.println("TABLES: "+ this.tables);
@@ -541,6 +541,6 @@ public class SQLParser{
 		System.out.println("MIN: "+this.MINColumns);
 		System.out.println("AVG: "+this.AVGColumns);
 		System.out.println("SUM: "+this.SUMColumns);
-		System.out.println("COUNT: "+this.COUNTColumns);
+		System.out.println("COUNT: "+this.COUNTColumns); */
 	}
 }

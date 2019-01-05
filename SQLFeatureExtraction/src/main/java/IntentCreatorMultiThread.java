@@ -47,7 +47,7 @@ public class IntentCreatorMultiThread extends Thread{
 						else
 							query += " "+tokens[i];
 					}
-					System.out.println("Query: "+query);
+			//		System.out.println("Query: "+query);
 					String sessionID = tokens[0];
 					if(!sessionID.equals(prevSessionID)) {
 						queryID = 0;
@@ -62,7 +62,7 @@ public class IntentCreatorMultiThread extends Thread{
 						if(validQuery) {
 							absQueryID++;
 							if(absQueryID % 100000 == 0) {
-								System.out.println("Query: "+query);
+							//	System.out.println("Query: "+query);
 								System.out.println("Covered SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
 							}
 							String to_append = "Session "+sessionID+", Query "+queryID+"; OrigQuery: "+query+";"+fragmentObj.getIntentBitVector()+"\n";
