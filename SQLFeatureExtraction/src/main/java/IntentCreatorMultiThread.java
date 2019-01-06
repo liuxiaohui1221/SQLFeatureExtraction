@@ -86,7 +86,7 @@ public class IntentCreatorMultiThread extends Thread{
 							absQueryID++;
 							String to_append = "Session "+sessionID+", Query "+queryID+"; OrigQuery: "+query+";"+fragmentObj.getIntentBitVector()+"\n";
 							concLine += to_append;
-							if(absQueryID % 10 == 0) {
+							if(absQueryID % 5 == 0) {
 								bw.append(concLine);
 								bw.flush();
 								concLine = "";
