@@ -64,19 +64,19 @@ public class IntentCreatorMultiThread extends Thread{
 					try {						
 						MINCFragmentIntent fragmentObj = null;
 						if(validQuery) {
-							System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
 							fragmentObj = new MINCFragmentIntent(query, this.schParse);
+					//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
 						}
 						if(fragmentObj!=null) {
-							System.out.println("Inside Thread ID: "+this.threadID+" valid Query obtained FragmentObj");
 							validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
+					//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query obtained FragmentObj");
 						}
 						else
 							validQuery = false;
 						/*if(validQuery)
 							fragmentObj.printIntentVector();*/
 						if(validQuery) {
-							System.out.println("Inside Thread ID: "+this.threadID+" Created fragment vector writing it to file");
+				//			System.out.println("Inside Thread ID: "+this.threadID+" Created fragment vector writing it to file");
 							String sessionID = tokens[0];
 							if(!sessionID.equals(prevSessionID)) {
 								queryID = 0;
@@ -86,13 +86,13 @@ public class IntentCreatorMultiThread extends Thread{
 							absQueryID++;
 							String to_append = "Session "+sessionID+", Query "+queryID+"; OrigQuery: "+query+";"+fragmentObj.getIntentBitVector()+"\n";
 							concLine += to_append;
-						//	if(absQueryID % 10 == 0) {
+							if(absQueryID % 100 == 0) {
 								bw.append(concLine);
 								bw.flush();
 								concLine = "";
 //								System.out.println("Query: "+query);
 								System.out.println("ThreadID: "+this.threadID+", Covered SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
-						//	}
+							}
 						}
 					} catch(Exception e) {
 						continue;

@@ -594,7 +594,7 @@ public class MINCFragmentIntent{
 		String line = null;
 		int i=0;
 		int absCount = 0;
-		while ((line=br.readLine())!=null && absCount<5000000) {
+		while ((line=br.readLine())!=null && absCount<2000000) {
 			if(line.contains("Query")) {
 				line = line.replace("\t"," ");
 				line = line.replaceAll("\\s+", " ");
@@ -646,10 +646,11 @@ public class MINCFragmentIntent{
 		return inputSplits;
 	}
 	
-	public static ArrayList<String> defineOutputSplits(String rawSessFile, int numThreads) throws Exception{
+	public static ArrayList<String> defineOutputSplits(String tempLogDir, String rawSessFile, int numThreads) throws Exception{
 		ArrayList<String> outputSplitFiles = new ArrayList<String>();
 		for(int i=0; i<numThreads; i++) {
-			String outFilePerThread = rawSessFile+"_SPLIT_OUT_"+i;
+			String fileName = rawSessFile.split("/")[rawSessFile.split("/").length-1];
+			String outFilePerThread = tempLogDir+"/"+fileName+"_SPLIT_OUT_"+i;
 			outputSplitFiles.add(outFilePerThread);
 		}
 		return outputSplitFiles;
@@ -678,14 +679,14 @@ public class MINCFragmentIntent{
 		bw.close();
 	}
 	
-	public static void readFromRawSessionsFile(String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads) throws Exception{
+	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads) throws Exception{
 		deleteIfExists(intentVectorFile);
 		System.out.println("Deleted previous intent file");
 		ArrayList<String> sessQueries = countLines(rawSessFile);
 		System.out.println("Read sessQueries into main memory");
 		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(sessQueries, numThreads);
 		System.out.println("Split Input Across Threads");
-		ArrayList<String> outputSplitFiles = defineOutputSplits(rawSessFile, numThreads);
+		ArrayList<String> outputSplitFiles = defineOutputSplits(tempLogDir, rawSessFile, numThreads);
 		System.out.println("Defined Output File Splits Across Threads");
 		for(int i=0; i<numThreads; i++) {
 			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(i, sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse);
@@ -735,6 +736,7 @@ public class MINCFragmentIntent{
 		String concSessFile = configDict.get("MINC_CONC_SESS_FILE"); // already configDict prepends the homeDir
 		String intentVectorFile = configDict.get("MINC_FRAGMENT_INTENT_VECTOR_FILE");
 		String rawSessFile = configDict.get("MINC_RAW_SESS_FILE");
+		String tempLogDir = configDict.get("MINC_TEMP_LOG_DIR");
 		int numThreads = Integer.parseInt(configDict.get("MINC_NUM_THREADS"));
 		try {
 			String line = null;
@@ -742,7 +744,7 @@ public class MINCFragmentIntent{
 			int queryID = 0;
 			
 			//readFrom100KFile(queryFile, line, prevSessionID, schParse, queryID);
-			readFromRawSessionsFile(rawSessFile, intentVectorFile, line, schParse, numThreads);
+			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads);
 			//readFromConcurrentSessionsFile(concSessFile, intentVectorFile, line, schParse);
 			String query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.location=c.location WHERE m.published = 1 and m.country=c.country GROUP BY m.sublevel HAVING m.country = 2 ORDER BY m.sublevel, m.parent, m.ordering";
 			//query = "SELECT DISTINCT a.*, f.name AS creatorname, b.count, \"\" AS thumbnail, \"\" AS storage, 1 AS display, 1 AS privacy, b.last_updated FROM jos_community_photos_albums AS a LEFT JOIN ((SELECT id, approvals FROM jos_community_groups) UNION (SELECT id, approvals FROM jos_community_courses)) d ON a.groupid = d.id LEFT JOIN jos_community_groups_members AS c ON a.groupid = c.groupid LEFT JOIN (SELECT albumid, creator, COUNT(*) AS count, MAX(created) AS last_updated FROM jos_community_photos WHERE permissions = 0 OR (permissions = 2 AND (creator = 0 OR owner = 0)) GROUP BY albumid, creator) b ON a.id = b.albumid AND a.creator = b.creator INNER JOIN jos_users AS f ON a.creator = f.id WHERE (a.permissions = 0 OR (a.permissions = 2 AND (a.creator = 0 OR a.owner = 0))) AND (a.groupid = 0 OR (a.groupid > 0 AND (d.approvals = 0 OR (d.approvals = 1 AND c.memberid = 0))))";
