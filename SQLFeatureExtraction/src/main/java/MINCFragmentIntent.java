@@ -680,8 +680,8 @@ public class MINCFragmentIntent{
 	}
 	
 	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads) throws Exception{
-		deleteIfExists(intentVectorFile);
-		System.out.println("Deleted previous intent file");
+	//	deleteIfExists(intentVectorFile);
+	//	System.out.println("Deleted previous intent file");
 		ArrayList<String> sessQueries = countLines(rawSessFile);
 		System.out.println("Read sessQueries into main memory");
 		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(sessQueries, numThreads);
