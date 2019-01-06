@@ -697,7 +697,7 @@ public class MINCFragmentIntent{
 		for(IntentCreatorMultiThread intentMT : intentMTs) {
 			intentMT.join();
 		}
-		concatenateOutputFiles(outputSplitFiles, intentVectorFile);
+	//	concatenateOutputFiles(outputSplitFiles, intentVectorFile);
 	}
 	
 	public static void readFromConcurrentSessionsFile(String concSessFile, String intentVectorFile, String line, SchemaParser schParse) throws Exception{
