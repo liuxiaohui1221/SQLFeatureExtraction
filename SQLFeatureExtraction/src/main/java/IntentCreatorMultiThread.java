@@ -43,6 +43,7 @@ public class IntentCreatorMultiThread extends Thread{
 			String concLine = "";
 			int lowerIndex = this.lowerUpperIndexBounds.getKey();
 			int upperIndex = this.lowerUpperIndexBounds.getValue();
+			System.out.println("Initialized Thread ID: "+this.threadID);
 			for(int index = lowerIndex; index <= upperIndex; index++) {
 				String line = this.sessQueries.get(index);
 				if(line.contains("Query")) {
@@ -55,10 +56,19 @@ public class IntentCreatorMultiThread extends Thread{
 							query += " "+tokens[i];
 					}
 			//		System.out.println("Query: "+query);
-					
-					MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, this.schParse);
-					try {
-						boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
+					query = query.trim();
+					boolean validQuery = false;
+					if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
+						validQuery = true;
+					}					
+					try {						
+						MINCFragmentIntent fragmentObj = null;
+						if(validQuery)
+							fragmentObj = new MINCFragmentIntent(query, this.schParse);
+						if(fragmentObj!=null)
+							validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
+						else
+							validQuery = false;
 						/*if(validQuery)
 							fragmentObj.printIntentVector();*/
 						if(validQuery) {
@@ -71,20 +81,23 @@ public class IntentCreatorMultiThread extends Thread{
 							absQueryID++;
 							String to_append = "Session "+sessionID+", Query "+queryID+"; OrigQuery: "+query+";"+fragmentObj.getIntentBitVector()+"\n";
 							concLine += to_append;
-							if(absQueryID % 100 == 0) {
+						//	if(absQueryID % 10 == 0) {
 								bw.append(concLine);
+								bw.flush();
 								concLine = "";
 //								System.out.println("Query: "+query);
 								System.out.println("ThreadID: "+this.threadID+", Covered SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
-							}
+						//	}
 						}
 					} catch(Exception e) {
 						continue;
 					}
 				}
 			}
-			if(!concLine.equals(""))
+			if(!concLine.equals("")) {
 				bw.append(concLine);
+				bw.flush();
+			}
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
