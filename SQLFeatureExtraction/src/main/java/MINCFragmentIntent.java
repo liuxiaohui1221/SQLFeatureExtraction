@@ -218,7 +218,7 @@ public class MINCFragmentIntent{
 			b.set(3);
 		else {
 			System.out.println("Invalid queryType!!");
-			System.exit(0);
+		//	System.exit(0);
 		}
 		if(this.intentBitVector == null) {
 			this.intentBitVector = toString(b,4);
@@ -226,14 +226,14 @@ public class MINCFragmentIntent{
 		}
 		else{
 			System.out.println("Invalid intent bitvector!!");
-			System.exit(0);
+		//	System.exit(0);
 		}			
 	}
 	
 	public void appendToBitVectorString(String b) throws Exception{
 		if(this.intentBitVector == null) {
 			System.out.println("Invalid intent bitvector!!");
-			System.exit(0);
+		//	System.exit(0);
 		}
 		else {
 			this.intentBitVector += b.toString();
@@ -454,7 +454,6 @@ public class MINCFragmentIntent{
 		}
 		else {
 			System.out.println("querySet should be a pair and does not contain more than 2 tables !!");
-			System.exit(0);
 		}
 		return null;
 	}
