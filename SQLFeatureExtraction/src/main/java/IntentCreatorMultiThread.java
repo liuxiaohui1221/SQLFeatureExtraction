@@ -79,7 +79,7 @@ public class IntentCreatorMultiThread extends Thread{
 				//			System.out.println("Inside Thread ID: "+this.threadID+" Created fragment vector writing it to file");
 							String sessionID = tokens[0];
 							if(!sessionID.equals(prevSessionID)) {
-								queryID = 0;
+								queryID = 1;  // queryID starts with 1 not 0
 								prevSessionID = sessionID;
 							} else
 								queryID++;
