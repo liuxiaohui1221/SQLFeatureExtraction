@@ -63,15 +63,20 @@ public class IntentCreatorMultiThread extends Thread{
 					}					
 					try {						
 						MINCFragmentIntent fragmentObj = null;
-						if(validQuery)
+						if(validQuery) {
+							System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
 							fragmentObj = new MINCFragmentIntent(query, this.schParse);
-						if(fragmentObj!=null)
+						}
+						if(fragmentObj!=null) {
+							System.out.println("Inside Thread ID: "+this.threadID+" valid Query obtained FragmentObj");
 							validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
+						}
 						else
 							validQuery = false;
 						/*if(validQuery)
 							fragmentObj.printIntentVector();*/
 						if(validQuery) {
+							System.out.println("Inside Thread ID: "+this.threadID+" Created fragment vector writing it to file");
 							String sessionID = tokens[0];
 							if(!sessionID.equals(prevSessionID)) {
 								queryID = 0;
