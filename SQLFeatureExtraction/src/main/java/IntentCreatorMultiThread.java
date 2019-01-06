@@ -36,14 +36,14 @@ public class IntentCreatorMultiThread extends Thread{
 	public void run(){
 		try {
 			MINCFragmentIntent.deleteIfExists(this.outputFile);
-			BufferedWriter bw = new BufferedWriter(new FileWriter(outputFile, true));
+			BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
 			double absQueryID = 0;
 			int queryID = 0;
 			String prevSessionID = "";
 			String concLine = "";
 			int lowerIndex = this.lowerUpperIndexBounds.getKey();
 			int upperIndex = this.lowerUpperIndexBounds.getValue();
-			System.out.println("Initialized Thread ID: "+this.threadID);
+			System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
 			for(int index = lowerIndex; index <= upperIndex; index++) {
 				String line = this.sessQueries.get(index);
 				if(line.contains("Query")) {

@@ -594,7 +594,7 @@ public class MINCFragmentIntent{
 		String line = null;
 		int i=0;
 		int absCount = 0;
-		while ((line=br.readLine())!=null/* && absCount<2000000*/) {
+		while ((line=br.readLine())!=null && absCount<2000000) {
 			if(line.contains("Query")) {
 				line = line.replace("\t"," ");
 				line = line.replaceAll("\\s+", " ");
@@ -651,6 +651,7 @@ public class MINCFragmentIntent{
 		for(int i=0; i<numThreads; i++) {
 			String fileName = rawSessFile.split("/")[rawSessFile.split("/").length-1];
 			String outFilePerThread = tempLogDir+"/"+fileName+"_SPLIT_OUT_"+i;
+			System.out.println("outFilePerThread: "+outFilePerThread);
 			outputSplitFiles.add(outFilePerThread);
 		}
 		return outputSplitFiles;
