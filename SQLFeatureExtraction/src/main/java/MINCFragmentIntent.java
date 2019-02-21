@@ -165,13 +165,38 @@ public class MINCFragmentIntent{
        return to_return;
     }
 	
+	public void writeIntentVectorToTempFile(String query) throws Exception{
+		String fileName = "tempVector";
+		this.deleteIfExists(fileName);
+		BufferedWriter bw = new BufferedWriter(new FileWriter(fileName, true));
+		bw.append("query:"+query+"\n");
+		bw.append("intentVector:"+this.intentBitVector+"\n");
+		bw.append("queryTypeBitMap:"+this.queryTypeBitMap+"\n");
+		bw.append("TableBitMap:"+this.tableBitMap+"\n");
+		bw.append("SelectionBitMap:"+this.selectionBitMap+"\n");
+		bw.append("GroupByBitMap:"+this.groupByBitMap+"\n");
+		bw.append("OrderByBitMap:"+this.orderByBitMap+"\n");
+		bw.append("ProjectionBitMap:"+this.projectionBitMap+"\n");
+		bw.append("HavingBitMap:"+this.havingBitMap+"\n");
+		bw.append("JoinPredicatesBitMap:"+this.joinPredicatesBitMap+"\n");
+		bw.append("LimitBitMap:"+this.limitBitMap+"\n");
+		bw.append("MINBitMap:"+this.MINBitMap+"\n");
+		bw.append("MAXBitMap:"+this.MAXBitMap+"\n");
+		bw.append("AVGBitMap:"+this.AVGBitMap+"\n");
+		bw.append("SUMBitMap:"+this.SUMBitMap+"\n");
+		bw.append("COUNTBitMap:"+this.COUNTBitMap+"\n");
+		bw.flush();
+		bw.close();
+	}
+	
 	public void printIntentVector() throws Exception{
 		System.out.println("Printing FragmentBitVector");
 		System.out.println(this.intentBitVector);
 		System.out.println("----OPERATOR-WISE FRAGMENT------");
 		System.out.println("queryTypeBitMap: "+this.queryTypeBitMap);
 		System.out.println("TableBitMap: "+this.tableBitMap);
-		System.out.println("GroupByBitMap: "+this.groupByBitMap);
+		System.out.println("TableBitMap: "+this.tableBitMap);
+		System.out.println("SelectionBitMap:"+this.selectionBitMap);
 		System.out.println("OrderByBitMap: "+this.orderByBitMap);
 		System.out.println("ProjectionBitMap: "+this.projectionBitMap);
 		System.out.println("HavingBitMap: "+this.havingBitMap);
@@ -357,7 +382,6 @@ public class MINCFragmentIntent{
 		}
 		return tableColumnDict;
 	}
-	
 	public String createBitVectorForOpColSet(HashSet<Column> colSet) throws Exception {
 		String b = "";
 		if (colSet.size()==1 && colSet.iterator().next().toString().equals("*")) {
@@ -367,8 +391,8 @@ public class MINCFragmentIntent{
 		}
 		HashMap<String,ArrayList<String>> tableColumnDict = createTableColumnDict(colSet);
 		HashMap<String,Integer> schemaTables = this.schParse.fetchMINCTables();
-		HashSet<String> tableNames = new HashSet<String>(schemaTables.keySet());
-		for(String tableName:tableNames) {
+	//	HashSet<String> tableNames = new HashSet<String>(schemaTables.keySet());
+		for(String tableName:schemaTables.keySet()) {
 			String bitMapPerTable;
 			if(tableColumnDict.containsKey(tableName))
 				bitMapPerTable = this.setColumnsFromTable(tableName, tableColumnDict.get(tableName));
@@ -379,6 +403,8 @@ public class MINCFragmentIntent{
 		this.appendToBitVectorString(b);
 		return b;
 	}
+	
+	
 	
 	public void createBitVectorForLimit() throws Exception{
 		if(this.limitList.size()==1) {
@@ -458,6 +484,24 @@ public class MINCFragmentIntent{
 		return null;
 	}
 	
+	public static boolean compareJoinPreds(Pair<String,String> set1, HashSet<String> set2){
+		if(set1 == null || set2 ==null){
+            return false;
+        }
+		
+		
+		HashSet<String> pairToSet = new HashSet<String>();
+		pairToSet.add(set1.getKey().trim());
+		pairToSet.add(set1.getValue().trim());
+		
+	/*	if(pairToSet.contains("params")) {
+			 int a = 1;
+		}
+		*/
+        
+       return Util.equals(pairToSet, set2);
+	}
+	
 	public void createBitVectorForJoin() throws Exception{
 		//key is tablePair and value is a list of column pairs
 		HashMap<HashSet<String>,ArrayList<HashSet<String>>> joinPredDictQuery = convertColumnListToStringSet();
@@ -472,7 +516,7 @@ public class MINCFragmentIntent{
 			for(HashSet<String> joinPredQuery : joinPredListQuery) {
 				int joinPredSchemaIndex = 0;
 				for(Pair<String,String> joinPredSchema : joinPredListSchema) {
-					if(Util.equals(joinPredSchema, joinPredQuery)) {
+					if(compareJoinPreds(joinPredSchema, joinPredQuery)) {
 						int bitIndex = startEndBitPos.getKey()+joinPredSchemaIndex;
 						bitPosToSet.add(bitIndex);
 					}
@@ -750,7 +794,7 @@ public class MINCFragmentIntent{
 			//readFrom100KFile(queryFile, line, prevSessionID, schParse, queryID);
 			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads);
 			//readFromConcurrentSessionsFile(concSessFile, intentVectorFile, line, schParse);
-			String query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.location=c.location WHERE m.published = 1 and m.country=c.country GROUP BY m.sublevel HAVING m.country = 2 ORDER BY m.sublevel, m.parent, m.ordering";
+			String query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.ordering = c.ordering WHERE m.published = 1 and m.params=c.params GROUP BY m.sublevel HAVING m.lft = 2 ORDER BY m.sublevel, m.parent, m.ordering";
 			//query = "SELECT DISTINCT a.*, f.name AS creatorname, b.count, \"\" AS thumbnail, \"\" AS storage, 1 AS display, 1 AS privacy, b.last_updated FROM jos_community_photos_albums AS a LEFT JOIN ((SELECT id, approvals FROM jos_community_groups) UNION (SELECT id, approvals FROM jos_community_courses)) d ON a.groupid = d.id LEFT JOIN jos_community_groups_members AS c ON a.groupid = c.groupid LEFT JOIN (SELECT albumid, creator, COUNT(*) AS count, MAX(created) AS last_updated FROM jos_community_photos WHERE permissions = 0 OR (permissions = 2 AND (creator = 0 OR owner = 0)) GROUP BY albumid, creator) b ON a.id = b.albumid AND a.creator = b.creator INNER JOIN jos_users AS f ON a.creator = f.id WHERE (a.permissions = 0 OR (a.permissions = 2 AND (a.creator = 0 OR a.owner = 0))) AND (a.groupid = 0 OR (a.groupid > 0 AND (d.approvals = 0 OR (d.approvals = 1 AND c.memberid = 0))))";
 			//query = "SELECT * from jos_menu AS m, jos_components AS c WHERE m.published = 1 and m.country=c.country";
 			//query = "UPDATE `jos_session` SET `time`='1538611062',`userid`='0',`usertype`='',`username`='',`gid`='0',`guest`='1',`client_id`='0',`data`='__default|a:9:{s:15:\\\"session.counter\\\";i:89;s:19:\\\"session.timer.start\\\";i:1538610776;s:18:\\\"session.timer.last\\\";i:1538611055;s:17:\\\"session.timer.now\\\";i:1538611060;s:22:\\\"session.client.browser\\\";s:71:\\\"Mozilla/5.0 (compatible; SEOkicks; +https://www.seokicks.de/robot.html)\\\";s:8:\\\"registry\\\";O:9:\\\"JRegistry\\\":3:{s:17:\\\"_defaultNameSpace\\\";s:7:\\\"session\\\";s:9:\\\"_registry\\\";a:1:{s:7:\\\"session\\\";a:1:{s:4:\\\"data\\\";O:8:\\\"stdClass\\\":0:{}}}s:7:\\\"_errors\\\";a:0:{}}s:4:\\\"user\\\";O:5:\\\"JUser\\\":19:{s:2:\\\"id\\\";i:0;s:4:\\\"name\\\";N;s:8:\\\"username\\\";N;s:5:\\\"email\\\";N;s:8:\\\"password\\\";N;s:14:\\\"password_clear\\\";s:0:\\\"\\\";s:8:\\\"usertype\\\";N;s:5:\\\"block\\\";N;s:9:\\\"sendEmail\\\";i:0;s:3:\\\"gid\\\";i:0;s:12:\\\"registerDate\\\";N;s:13:\\\"lastvisitDate\\\";N;s:10:\\\"activation\\\";N;s:6:\\\"params\\\";N;s:3:\\\"aid\\\";i:0;s:5:\\\"guest\\\";i:1;s:7:\\\"_params\\\";O:10:\\\"JParameter\\\":7:{s:4:\\\"_raw\\\";s:0:\\\"\\\";s:4:\\\"_xml\\\";N;s:9:\\\"_elements\\\";a:0:{}s:12:\\\"_elementPath\\\";a:1:{i:0;s:58:\\\"/var/www/html/minc/libraries/joomla/html/parameter/element\\\";}s:17:\\\"_defaultNameSpace\\\";s:8:\\\"_default\\\";s:9:\\\"_registry\\\";a:1:{s:8:\\\"_default\\\";a:1:{s:4:\\\"data\\\";O:8:\\\"stdClass\\\":0:{}}}s:7:\\\"_errors\\\";a:0:{}}s:9:\\\"_errorMsg\\\";N;s:7:\\\"_errors\\\";a:0:{}}s:8:\\\"view-926\\\";b:1;s:13:\\\"session.token\\\";s:32:\\\"50cf27c9c56d1d64c5a1203e192fc4e6\\\";}' WHERE session_id='buledanlab7lhtd5tpc6jcp5t5' and published=1";
@@ -758,8 +802,10 @@ public class MINCFragmentIntent{
 			//query = "DELETE FROM jos_session WHERE ( time < '1538607473' )";
 			MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse);
 			boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
-			if(validQuery)
+			if(validQuery) {
 				fragmentObj.printIntentVector();
+				fragmentObj.writeIntentVectorToTempFile(query);
+			}
 		} catch(Exception e) {
 			e.printStackTrace();
 		}			
@@ -791,5 +837,27 @@ public class MINCFragmentIntent{
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
+	}
+	
+	public String createBitVectorForOpColSet(HashSet<Column> colSet) throws Exception {
+		String b = "";
+		if (colSet.size()==1 && colSet.iterator().next().toString().equals("*")) {
+				b = setAllColumns();
+				appendToBitVectorString(b);
+				return b;
+		}
+		HashMap<String,ArrayList<String>> tableColumnDict = createTableColumnDict(colSet);
+		HashMap<String,Integer> schemaTables = this.schParse.fetchMINCTables();
+		HashSet<String> tableNames = new HashSet<String>(schemaTables.keySet());
+		for(String tableName:tableNames) {
+			String bitMapPerTable;
+			if(tableColumnDict.containsKey(tableName))
+				bitMapPerTable = this.setColumnsFromTable(tableName, tableColumnDict.get(tableName));
+			else
+				bitMapPerTable = this.setColumnsFromTable(tableName, null);
+			b+=bitMapPerTable;
+		}
+		this.appendToBitVectorString(b);
+		return b;
 	}
  * */

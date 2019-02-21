@@ -15,6 +15,7 @@ import javafx.util.Pair;
 public class SchemaParser {
 	//following are the schema data structures
 	HashMap<String,Integer> MINCTables = new HashMap<String,Integer>();
+//	HashMap<Integer, String> MINCTableOrder = new HashMap<Integer,String>();
 	HashMap<String,String> MINCColumns = new HashMap<String,String>();
 	HashMap<String,String> MINCColTypes = new HashMap<String,String>();
 	HashMap<String,ArrayList<Pair<String, String>>> MINCJoinPreds = new HashMap<String,ArrayList<Pair<String, String>>>();
@@ -30,6 +31,10 @@ public class SchemaParser {
 		return this.MINCTables;
 	}
 	
+/*	public HashMap<Integer,String> fetchMINCTableOrder(){
+		return this.MINCTableOrder;
+	}
+*/	
 	public HashMap<String,String> fetchMINCColumns(){
 		return this.MINCColumns;
 	}
@@ -122,6 +127,7 @@ public class SchemaParser {
 				String key = st.split(":")[0];
 				int val = Integer.parseInt(st.split(":")[1]);
 				this.MINCTables.put(key, val);
+			//	this.MINCTableOrder.put(val,  key);
 			} 
 			this.MINCTables = Util.sortByValue(this.MINCTables);
 		}
