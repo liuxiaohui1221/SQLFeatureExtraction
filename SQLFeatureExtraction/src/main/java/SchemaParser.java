@@ -157,6 +157,7 @@ public class SchemaParser {
 			BufferedReader br = new BufferedReader(new FileReader(configFile)); 
 			String st; 
 			String homeDir = System.getProperty("user.home");
+			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.dhcp.cidse.adu.edu
 			while ((st = br.readLine()) != null) {
 				st = st.trim();
 				String key = st.split("=")[0];
