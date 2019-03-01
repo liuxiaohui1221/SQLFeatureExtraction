@@ -365,27 +365,27 @@ public class SQLParser{
 					if (sss instanceof Function){
 						Function f=(Function)sss;  		
 						String fName=f.getName();
-						if (fName.equals("MAX")){
+						if (fName.equals("max")){
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								MAXColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
 						}
-						else if(fName.equals("MIN")){
+						else if(fName.equals("min")){
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								MINColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
 						}
-						else if (fName.equals("SUM")){
+						else if (fName.equals("sum")){
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								SUMColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
 						}
-						else if (fName.equals("AVG")){
+						else if (fName.equals("avg")){
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								AVGColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
 						}
-						else if (fName.equals("COUNT")){
+						else if (fName.equals("count")){
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								COUNTColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
@@ -459,7 +459,7 @@ public class SQLParser{
 		Limit limit = s.getLimit();
 		if(limit != null) {
 			if (limitList.size() == 0)
-				limitList.add("LIMIT");
+				limitList.add("limit");
 		}
 		System.gc();
 		
@@ -491,7 +491,7 @@ public class SQLParser{
 					executeSelect(with1.get(i).getSelectBody(), 1);
 				}
 			}		
-			//Collect where and group by and nothing else
+			//Collect where and group by and order by and having and aggregates
 			executeSelect(s1.getSelectBody(), 1);
 		}
 		else if(stmt1 instanceof Update) {
