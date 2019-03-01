@@ -777,6 +777,7 @@ public class MINCFragmentIntent{
 	
 	public static void main(String[] args) {
 		String homeDir = System.getProperty("user.home");
+		homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.dhcp.cidse.adu.edu
 		String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
 		SchemaParser schParse = new SchemaParser();
 		schParse.fetchSchema(configFile);
