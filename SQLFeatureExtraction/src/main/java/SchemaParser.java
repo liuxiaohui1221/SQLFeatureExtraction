@@ -160,7 +160,7 @@ public class SchemaParser {
 			String st; 
 			String homeDir = System.getProperty("user.home");
 			if(MINCFragmentIntent.getMachineName().contains("4119510"))
-				homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.dhcp.cidse.adu.edu
+				homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
 			while ((st = br.readLine()) != null) {
 				st = st.trim();
 				String key = st.split("=")[0];
