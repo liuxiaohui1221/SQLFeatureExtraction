@@ -86,6 +86,8 @@ import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubJoin;
 import net.sf.jsqlparser.statement.select.SubSelect;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 public class MINCFragmentIntent{
 	String originalSQL;
 	Statement statement;
@@ -141,6 +143,18 @@ public class MINCFragmentIntent{
 		} catch (Exception e) {	
 			e.printStackTrace();
 		}
+	}
+	
+	public static String getMachineName(){
+		String hostname = null;
+		try {
+			InetAddress addr;
+		    addr = InetAddress.getLocalHost();
+		    hostname = addr.getHostName();
+		} catch(Exception e) {
+			e.printStackTrace();
+		}
+		return hostname;
 	}
 	
 	public String getIntentBitVector() {
@@ -777,7 +791,9 @@ public class MINCFragmentIntent{
 	
 	public static void main(String[] args) {
 		String homeDir = System.getProperty("user.home");
-		homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.dhcp.cidse.adu.edu
+		System.out.println(MINCFragmentIntent.getMachineName());
+		if(MINCFragmentIntent.getMachineName().contains("4119510"))
+			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.dhcp.cidse.adu.edu
 		String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
 		SchemaParser schParse = new SchemaParser();
 		schParse.fetchSchema(configFile);

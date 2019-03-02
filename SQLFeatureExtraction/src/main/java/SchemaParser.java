@@ -12,6 +12,8 @@ import java.util.Map.Entry;
 import java.util.TreeSet;
 import toolsForMetrics.Util;
 import javafx.util.Pair;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 public class SchemaParser {
 	//following are the schema data structures
 	HashMap<String,Integer> MINCTables = new HashMap<String,Integer>();
@@ -157,7 +159,8 @@ public class SchemaParser {
 			BufferedReader br = new BufferedReader(new FileReader(configFile)); 
 			String st; 
 			String homeDir = System.getProperty("user.home");
-			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.dhcp.cidse.adu.edu
+			if(MINCFragmentIntent.getMachineName().contains("4119510"))
+				homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.dhcp.cidse.adu.edu
 			while ((st = br.readLine()) != null) {
 				st = st.trim();
 				String key = st.split("=")[0];
