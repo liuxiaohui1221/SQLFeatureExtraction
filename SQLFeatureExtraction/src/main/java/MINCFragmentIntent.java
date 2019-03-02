@@ -810,7 +810,7 @@ public class MINCFragmentIntent{
 			int queryID = 0;
 			
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
-			//readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads);
+			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads);
 			
 			String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 ORDER BY M.sublevel, M.parent, M.ordering";
 			//query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.ordering = c.ordering WHERE m.published = 1 and m.params=c.params GROUP BY m.sublevel HAVING m.lft = 2 ORDER BY m.sublevel, m.parent, m.ordering";
