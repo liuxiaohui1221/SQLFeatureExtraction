@@ -792,8 +792,10 @@ public class MINCFragmentIntent{
 	public static void main(String[] args) {
 		String homeDir = System.getProperty("user.home");
 		System.out.println(MINCFragmentIntent.getMachineName());
-		if(MINCFragmentIntent.getMachineName().contains("4119510"))
+		if(MINCFragmentIntent.getMachineName().contains("4119510") || MINCFragmentIntent.getMachineName().contains("4119509")
+				|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
 			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
+		}
 		String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
 		SchemaParser schParse = new SchemaParser();
 		schParse.fetchSchema(configFile);

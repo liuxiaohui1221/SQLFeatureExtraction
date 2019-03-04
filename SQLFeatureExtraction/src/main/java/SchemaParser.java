@@ -159,8 +159,10 @@ public class SchemaParser {
 			BufferedReader br = new BufferedReader(new FileReader(configFile)); 
 			String st; 
 			String homeDir = System.getProperty("user.home");
-			if(MINCFragmentIntent.getMachineName().contains("4119510"))
+			if(MINCFragmentIntent.getMachineName().contains("4119510") || MINCFragmentIntent.getMachineName().contains("4119509")
+					|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
 				homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
+			}
 			while ((st = br.readLine()) != null) {
 				st = st.trim();
 				String key = st.split("=")[0];
