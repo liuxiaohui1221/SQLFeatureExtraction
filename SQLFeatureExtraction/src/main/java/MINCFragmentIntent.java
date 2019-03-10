@@ -645,15 +645,15 @@ public class MINCFragmentIntent{
 		return queryID;
 	}
 	
-	public static ArrayList<String> countLines(String rawSessFile) throws Exception{
+	public static ArrayList<String> countLines(String rawSessFile, int startLineNum) throws Exception{
 		System.out.println("Counting lines from "+rawSessFile);
 		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
 		ArrayList<String> lines = new ArrayList<String>();
 		String line = null;
 		int i=0;
 		int absCount = 0;
-		while ((line=br.readLine())!=null && absCount<2000000) {
-			if(line.contains("Query")) {
+		while ((line=br.readLine())!=null && absCount<2000000+startLineNum) {
+			if(i>=startLineNum && line.contains("Query")) {
 				line = line.replace("\t"," ");
 				line = line.replaceAll("\\s+", " ");
 				line = line.trim();
@@ -738,10 +738,10 @@ public class MINCFragmentIntent{
 		bw.close();
 	}
 	
-	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads) throws Exception{
+	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads, int startLineNum) throws Exception{
 	//	deleteIfExists(intentVectorFile);
 	//	System.out.println("Deleted previous intent file");
-		ArrayList<String> sessQueries = countLines(rawSessFile);
+		ArrayList<String> sessQueries = countLines(rawSessFile, startLineNum);
 		System.out.println("Read sessQueries into main memory");
 		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(sessQueries, numThreads);
 		System.out.println("Split Input Across Threads");
@@ -806,13 +806,14 @@ public class MINCFragmentIntent{
 		String rawSessFile = configDict.get("MINC_RAW_SESS_FILE");
 		String tempLogDir = configDict.get("MINC_TEMP_LOG_DIR");
 		int numThreads = Integer.parseInt(configDict.get("MINC_NUM_THREADS"));
+		int startLineNum = Integer.parseInt(configDict.get("MINC_START_LINE_NUM"));
 		try {
 			String line = null;
 			String prevSessionID = null;
 			int queryID = 0;
 			
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
-			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads);
+			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum);
 			
 			String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 ORDER BY M.sublevel, M.parent, M.ordering";
 			//query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.ordering = c.ordering WHERE m.published = 1 and m.params=c.params GROUP BY m.sublevel HAVING m.lft = 2 ORDER BY m.sublevel, m.parent, m.ordering";
