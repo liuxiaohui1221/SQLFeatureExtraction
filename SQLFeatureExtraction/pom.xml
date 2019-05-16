@@ -18,8 +18,8 @@
 	<!-- https://mvnrepository.com/artifact/com.github.mpkorstanje/simmetrics -->
 	<dependency>
 	    <groupId>com.github.mpkorstanje</groupId>
-	    <artifactId>simmetrics</artifactId>
-	    <version>4.1.1</version>
+	    <artifactId>simmetrics-core</artifactId>
+	    <version>4.1.0</version>
 	</dependency>
 	<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
 	<dependency>
