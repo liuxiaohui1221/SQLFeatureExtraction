@@ -1,0 +1,124 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>insiderthreat.odin.cse.buffalo.edu</groupId>
+  <artifactId>SQLFeatureExtraction</artifactId>
+  <version>0.0.1-SNAPSHOT</version>
+  <name>SQLFeatureExtraction</name>
+  <description>Extract features from SQL queries for comparison and clustering purpose</description>
+  <url>https://github.com/UBOdin/EttuBench/wiki</url>
+  <organization>
+  	<name>UB Odin Lab</name>
+  	<url>odin.cse.buffalo.edu</url>
+  </organization>
+   <properties>
+    <maven.compiler.source>1.8</maven.compiler.source>
+    <maven.compiler.target>1.8</maven.compiler.target>
+  </properties>
+  <dependencies>
+	<!-- https://mvnrepository.com/artifact/com.github.mpkorstanje/simmetrics -->
+	<dependency>
+	    <groupId>com.github.mpkorstanje</groupId>
+	    <artifactId>simmetrics-core</artifactId>
+	    <version>4.1.0</version>
+	</dependency>
+	<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+	<dependency>
+	    <groupId>com.google.guava</groupId>
+	    <artifactId>guava</artifactId>
+	    <version>20.0</version>
+	</dependency>
+	<dependency>
+	    <groupId>odin.insiderthreat</groupId>
+	    <artifactId>jsqlparser</artifactId>
+	    <version>1.0</version>
+	</dependency>
+</dependencies>
+<repositories>
+    <!--other repositories if any-->
+    <repository>
+        <id>project.local</id>
+        <name>project</name>
+        <url>file:${project.basedir}/repo</url>
+    </repository>
+</repositories>
+   
+   <build>
+		  <!--finalName>${project.artifactId}-${project.version}</finalName-->
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <version>1.2.1</version>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>java</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+					<mainClass>MINCFragmentIntent</mainClass>			
+                </configuration>
+            </plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-dependency-plugin</artifactId>
+				<version>3.0.0</version>
+				<executions>
+				  <execution>
+					<id>copy</id>
+					<phase>package</phase>
+					<goals>
+					  <goal>copy</goal>
+					</goals>
+					<configuration>
+					  <artifactItems>
+						<artifactItem>
+						  <groupId>${project.groupId}</groupId>
+						  <artifactId>${project.artifactId}</artifactId>
+						  <version>${project.version}</version>
+						  <type>${project.packaging}</type>
+						</artifactItem>
+					  </artifactItems>
+					  <outputDirectory>lib</outputDirectory>
+					</configuration>
+				  </execution>
+				</executions>
+			</plugin>
+
+        </plugins>
+    </build>
+   
+   
+    <!--  build>
+        <finalName>SQLComparison</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-assembly-plugin</artifactId>
+                <version>2.2.1</version>
+                <executions>
+                    <execution>
+                        <id>package-jar-with-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>single</goal>
+                        </goals>
+                        <configuration>
+                            <appendAssemblyId>false</appendAssemblyId>
+                            <descriptorRefs>
+                                <descriptorRef>jar-with-dependencies</descriptorRef>
+                            </descriptorRefs>
+                            <archive>
+                                <manifest>
+                                    <mainClass>MINCFragmentIntent</mainClass>
+                                </manifest>
+                            </archive>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build-->
+
+</project>
