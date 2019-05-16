@@ -14,6 +14,33 @@
     <maven.compiler.source>1.8</maven.compiler.source>
     <maven.compiler.target>1.8</maven.compiler.target>
   </properties>
+  <dependencies>
+	<!-- https://mvnrepository.com/artifact/com.github.mpkorstanje/simmetrics -->
+	<dependency>
+	    <groupId>com.github.mpkorstanje</groupId>
+	    <artifactId>simmetrics</artifactId>
+	    <version>4.1.1</version>
+	</dependency>
+	<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
+	<dependency>
+	    <groupId>com.google.guava</groupId>
+	    <artifactId>guava</artifactId>
+	    <version>20.0</version>
+	</dependency>
+	<dependency>
+	    <groupId>odin.insiderthreat</groupId>
+	    <artifactId>jsqlparser</artifactId>
+	    <version>1.0</version>
+	</dependency>
+</dependencies>
+<repositories>
+    <!--other repositories if any-->
+    <repository>
+        <id>project.local</id>
+        <name>project</name>
+        <url>file:${project.basedir}/repo</url>
+    </repository>
+</repositories>
    
    <build>
 		  <!--finalName>${project.artifactId}-${project.version}</finalName-->
@@ -93,32 +120,5 @@
             </plugin>
         </plugins>
     </build-->
-    <dependencies>
-<!-- https://mvnrepository.com/artifact/com.github.mpkorstanje/simmetrics -->
-<dependency>
-    <groupId>com.github.mpkorstanje</groupId>
-    <artifactId>simmetrics</artifactId>
-    <version>4.1.0</version>
-    <type>pom</type>
-</dependency>
-<!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
-<dependency>
-    <groupId>com.google.guava</groupId>
-    <artifactId>guava</artifactId>
-    <version>18.0</version>
-</dependency>
-<dependency>
-    <groupId>odin.insiderthreat</groupId>
-    <artifactId>jsqlparser</artifactId>
-    <version>1.0</version>
-</dependency>
-    </dependencies>
-    <repositories>
-    <!--other repositories if any-->
-    <repository>
-        <id>project.local</id>
-        <name>project</name>
-        <url>file:${project.basedir}/repo</url>
-    </repository>
-</repositories>
+
 </project>
