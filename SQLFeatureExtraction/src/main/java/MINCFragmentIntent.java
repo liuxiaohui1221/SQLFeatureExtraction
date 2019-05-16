@@ -652,7 +652,7 @@ public class MINCFragmentIntent{
 		String line = null;
 		int i=0;
 		int absCount = 0;
-		while ((line=br.readLine())!=null && absCount<2000000+startLineNum) {
+		while ((line=br.readLine())!=null  && absCount<2000+startLineNum) {
 			if(absCount>=startLineNum && line.contains("Query")) {
 				line = line.replace("\t"," ");
 				line = line.replaceAll("\\s+", " ");
@@ -738,7 +738,8 @@ public class MINCFragmentIntent{
 		bw.close();
 	}
 	
-	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads, int startLineNum) throws Exception{
+	
+	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads, int startLineNum, String pruneKeepModifyRepeatedQueries) throws Exception{
 	//	deleteIfExists(intentVectorFile);
 	//	System.out.println("Deleted previous intent file");
 		ArrayList<String> sessQueries = countLines(rawSessFile, startLineNum);
@@ -749,7 +750,7 @@ public class MINCFragmentIntent{
 		System.out.println("Defined Output File Splits Across Threads");
 		ArrayList<IntentCreatorMultiThread> intentMTs = new ArrayList<IntentCreatorMultiThread>();
 		for(int i=0; i<numThreads; i++) {
-			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(i, sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse);
+			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(i, sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse, pruneKeepModifyRepeatedQueries);
 			intentMT.start();		
 		}
 		for(IntentCreatorMultiThread intentMT : intentMTs) {
@@ -807,13 +808,14 @@ public class MINCFragmentIntent{
 		String tempLogDir = configDict.get("MINC_TEMP_LOG_DIR");
 		int numThreads = Integer.parseInt(configDict.get("MINC_NUM_THREADS"));
 		int startLineNum = Integer.parseInt(configDict.get("MINC_START_LINE_NUM"));
+		String pruneKeepModifyRepeatedQueries = configDict.get("MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES");
 		try {
 			String line = null;
 			String prevSessionID = null;
 			int queryID = 0;
 			
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
-			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum);
+			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries);
 			
 			String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 ORDER BY M.sublevel, M.parent, M.ordering";
 			//query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.ordering = c.ordering WHERE m.published = 1 and m.params=c.params GROUP BY m.sublevel HAVING m.lft = 2 ORDER BY m.sublevel, m.parent, m.ordering";

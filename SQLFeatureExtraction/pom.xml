@@ -94,6 +94,13 @@
         </plugins>
     </build-->
     <dependencies>
+<!-- https://mvnrepository.com/artifact/com.github.mpkorstanje/simmetrics -->
+<dependency>
+    <groupId>com.github.mpkorstanje</groupId>
+    <artifactId>simmetrics</artifactId>
+    <version>4.1.0</version>
+    <type>pom</type>
+</dependency>
 <!-- https://mvnrepository.com/artifact/com.google.guava/guava -->
 <dependency>
     <groupId>com.google.guava</groupId>
