@@ -179,7 +179,6 @@ public class IntentCreatorMultiThread extends Thread{
 	}
 	
 	public void processQueriesPruneReps() throws Exception{
-		assert (pruneKeepModifyRepeatedQueries == "PRUNE");
 		MINCFragmentIntent.deleteIfExists(this.outputFile);
 		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
 		double absQueryID = 0;
@@ -228,7 +227,6 @@ public class IntentCreatorMultiThread extends Thread{
 	public void run(){
 		try {
 			System.out.println(pruneKeepModifyRepeatedQueries);
-			assert (pruneKeepModifyRepeatedQueries == "PRUNE" || pruneKeepModifyRepeatedQueries == "KEEP" || pruneKeepModifyRepeatedQueries == "MODIFY");
 			if (pruneKeepModifyRepeatedQueries == "KEEP" || pruneKeepModifyRepeatedQueries == "MODIFY") {	
 				System.out.println(pruneKeepModifyRepeatedQueries);
 				processQueriesKeepOrModifyReps();
