@@ -130,10 +130,11 @@ public class IntentCreatorMultiThread extends Thread{
 		else if(sessQueries.size()==2 && sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") && 
 				sessQueries.get(1).contains("UPDATE `jos_session` SET `time`="))
 			return false;
-		else if(sessQueries.size()>=3 && sessQueries.get(0).contains("SELECT usefulness FROM jos_community_usefulness WHERE userid =") &&
+/*		else if(sessQueries.size()>=3 && sessQueries.get(0).contains("SELECT usefulness FROM jos_community_usefulness WHERE userid =") &&
 				sessQueries.get(1).contains("SELECT usefulness FROM resource WHERE gid =") &&
 				sessQueries.get(2).contains("SELECT count(*) FROM jos_community_usefulness WHERE resourceid ="))
 			return false;
+*/
 		else if(sessQueries.size()>=3 && sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") &&
 				sessQueries.get(1).contains("DELETE FROM jos_session WHERE ( time <")  &&
 				sessQueries.get(2).contains("SELECT * FROM jos_session WHERE session_id ="))
@@ -239,7 +240,7 @@ public class IntentCreatorMultiThread extends Thread{
 		while(curQueryIndex <= upperQueryIndex) {
 			while(sessionID.equals(prevSessionID) && curQueryIndex <=upperQueryIndex) { // iterates over all queries in a session, terminates on new session
 				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
-					if (!query.equals("SELECT VERSION()"))
+					if (!query.equals("SELECT VERSION()") && !query.equals("SELECT f.id"))
 						curSessQueries.add(query);
 				}
 				//read queries session-wise
@@ -266,7 +267,7 @@ public class IntentCreatorMultiThread extends Thread{
 			// if sessQueries is not empty, check for repetitions
 			boolean validSess = isValidSession(curSessQueries);
 			if(validSess) {
-				System.out.println("Session "+sessionID+"'s validity: "+validSess);
+			//	System.out.println("Session "+sessionID+"'s validity: "+validSess);
 				numValidSessions++;
 				numValidQueries+=curSessQueries.size();
 				absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
