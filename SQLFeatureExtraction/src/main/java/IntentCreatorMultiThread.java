@@ -28,17 +28,15 @@ public class IntentCreatorMultiThread extends Thread{
 	int threadID;
 	String pruneKeepModifyRepeatedQueries;
 	String prevQueryBitVector = null;
-	String refinedSessFile;
 	
 	public IntentCreatorMultiThread(int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, 
-			String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries, String refinedSessFile) {
+			String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries) {
 		this.sessQueries = sessQueries;
 		this.lowerUpperIndexBounds = lowerUpperIndexBounds;
 		this.outputFile = outputFile;
 		this.schParse = schParse;
 		this.threadID = threadID;
 		this.pruneKeepModifyRepeatedQueries = pruneKeepModifyRepeatedQueries;
-		this.refinedSessFile = refinedSessFile;
 	}
 	
 	public void processQueriesKeepOrModifyReps() throws Exception{
@@ -122,24 +120,12 @@ public class IntentCreatorMultiThread extends Thread{
 		}
 	}
 	
-	public boolean containsRepeatedPatterns(String prevSessQuery, String curSessQuery) {
-		if(prevSessQuery.contains("SELECT rsource_type FROM resource where gid =") 
-				&& curSessQuery.contains("SELECT name FROM jos_community_courses WHERE id ="))
-			return true;
-		else if(prevSessQuery.contains("SELECT usefulness FROM jos_community_usefulness WHERE userid =") 
-				&& curSessQuery.contains("SELECT usefulness FROM resource WHERE gid ="))
-			return true;
-		else if(prevSessQuery.contains("SELECT count(*) FROM jos_community_usefulness WHERE resourceid =") 
-				&& curSessQuery.contains("SELECT usefulness FROM jos_community_usefulness WHERE userid ="))
-			return true;
-		return false;
-	}
-	
 	public boolean isValidSession(ArrayList<String> sessQueries) {
 		if(sessQueries.size()>=0 && sessQueries.size()<=1) {
 	//		System.out.println("Session Empty !");
 			return false;
-		}
+		} else if(sessQueries.size()>=50)
+			return false;
 		else if(sessQueries.size()==2 && sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") && 
 				sessQueries.get(1).contains("UPDATE `jos_session` SET `time`="))
 			return false;
@@ -154,8 +140,6 @@ public class IntentCreatorMultiThread extends Thread{
 			if(!isValid)
 				return false;
 			if(prevSessQuery != null) {
-			//	if (containsRepeatedPatterns(prevSessQuery, curSessQuery))
-			//		return false; 
 				StringMetric metric = StringMetrics.cosineSimilarity();
 				float cosineSim = metric.compare(curSessQuery, prevSessQuery);
 				if(cosineSim > 0.8)
@@ -233,8 +217,8 @@ public class IntentCreatorMultiThread extends Thread{
 	}
 	
 	public void processQueriesPruneReps() throws Exception{
-		MINCFragmentIntent.deleteIfExists(this.refinedSessFile);
-		BufferedWriter bw = new BufferedWriter(new FileWriter(this.refinedSessFile, true));
+		MINCFragmentIntent.deleteIfExists(this.outputFile);
+		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
 		double absQueryID = 0;
 		double absSessID = 0;
 		String prevSessionID = "";
@@ -242,7 +226,7 @@ public class IntentCreatorMultiThread extends Thread{
 		String query = "";
 		int lowerQueryIndex = this.lowerUpperIndexBounds.getKey();
 		int upperQueryIndex = this.lowerUpperIndexBounds.getValue();
-		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.refinedSessFile);
+		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
 		int curQueryIndex = lowerQueryIndex;
 		ArrayList<String> curSessQueries = new ArrayList<String>();
 		int numValidSessions = 0;
