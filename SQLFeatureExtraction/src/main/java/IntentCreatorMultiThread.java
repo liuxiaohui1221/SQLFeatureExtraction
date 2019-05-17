@@ -120,15 +120,18 @@ public class IntentCreatorMultiThread extends Thread{
 	}
 	
 	public boolean isValidSession(ArrayList<String> sessQueries) {
-		if(sessQueries.size()==0)
+		if(sessQueries.size()==0) {
+			System.out.println("Session Empty !");
 			return false;
+		}
 		boolean isValid = true;
 		String prevSessQuery = null;
 		for(String curSessQuery : sessQueries) {
 			if(prevSessQuery != null) {
 				StringMetric metric = StringMetrics.cosineSimilarity();
-				float result = metric.compare(curSessQuery, prevSessQuery);
-				if(result > 0.9)
+				float cosineSim = metric.compare(curSessQuery, prevSessQuery);
+				System.out.println(curSessQuery+";"+prevSessQuery+"; sim: "+cosineSim);
+				if(cosineSim > 0.9)
 					isValid = false; // curQuery is similar to prevQuery -- so repetition likely
 			}
 			prevSessQuery = curSessQuery;
@@ -191,7 +194,7 @@ public class IntentCreatorMultiThread extends Thread{
 		int curQueryIndex = lowerQueryIndex;
 		ArrayList<String> curSessQueries = new ArrayList<String>();
 		while(curQueryIndex <= upperQueryIndex) {
-			while(sessionID.equals(prevSessionID)) { // iterates over all queries in a session, terminates on new session
+			while(sessionID.equals(prevSessionID) && curQueryIndex <=upperQueryIndex) { // iterates over all queries in a session, terminates on new session
 				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
 					curSessQueries.add(query);
 				}
