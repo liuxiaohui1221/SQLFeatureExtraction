@@ -134,11 +134,11 @@ public class IntentCreatorMultiThread extends Thread{
 				float cosineSim = metric.compare(curSessQuery, prevSessQuery);
 				if(cosineSim > 0.9)
 					isValid = false; // curQuery is similar to prevQuery -- so repetition likely
-				System.out.println(curSessQuery+";"+prevSessQuery+"; cosineSim: "+cosineSim+"; isValid: "+isValid);
+				if(!isValid)
+					System.out.println(curSessQuery+";"+prevSessQuery+"; cosineSim: "+cosineSim+"; isValid: "+isValid);
 			}
 			prevSessQuery = curSessQuery;
 		}
-		System.out.println("isValid: "+isValid);
 		return isValid;
 	}
 	
@@ -223,6 +223,7 @@ public class IntentCreatorMultiThread extends Thread{
 			//curQueryIndex = populateCurSessionQueries(curQueryIndex, sessionID, prevSessionID, curSessQueries); // index incremented within this method
 			// if sessQueries is not empty, check for repetitions
 			boolean validSess = isValidSession(curSessQueries);
+			System.out.println("Session "+sessionID+"'s validity: "+isValid);
 			if(validSess) {
 				absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
 			}
