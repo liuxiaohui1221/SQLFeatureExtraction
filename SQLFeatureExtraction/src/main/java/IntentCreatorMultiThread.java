@@ -121,7 +121,7 @@ public class IntentCreatorMultiThread extends Thread{
 	
 	public boolean isValidSession(ArrayList<String> sessQueries) {
 		if(sessQueries.size()==0) {
-			System.out.println("Session Empty !");
+	//		System.out.println("Session Empty !");
 			return false;
 		}
 		boolean isValid = true;
@@ -227,7 +227,7 @@ public class IntentCreatorMultiThread extends Thread{
 			// if sessQueries is not empty, check for repetitions
 			boolean validSess = isValidSession(curSessQueries);
 			if(validSess) {
-				System.out.println("Session "+sessionID+"'s validity: "+validSess);
+			//	System.out.println("Session "+sessionID+"'s validity: "+validSess);
 				numValidSessions++;
 				numValidQueries+=curSessQueries.size();
 				//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
