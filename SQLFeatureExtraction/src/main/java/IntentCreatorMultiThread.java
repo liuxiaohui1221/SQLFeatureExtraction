@@ -133,6 +133,7 @@ public class IntentCreatorMultiThread extends Thread{
 			}
 			prevSessQuery = curSessQuery;
 		}
+		System.out.println("isValid: "+isValid);
 		return isValid;
 	}
 	
@@ -210,7 +211,7 @@ public class IntentCreatorMultiThread extends Thread{
 					if(!sessionID.equals(prevSessionID)) {
 						prevSessionID = sessionID;
 					} 
-			//		System.out.println("Query: "+query);
+					System.out.println("Query: "+query);
 					query = query.trim();
 				}
 				curQueryIndex++;
