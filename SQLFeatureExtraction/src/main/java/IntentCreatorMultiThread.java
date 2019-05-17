@@ -136,7 +136,7 @@ public class IntentCreatorMultiThread extends Thread{
 	}
 	
 	public boolean isValidSession(ArrayList<String> sessQueries) {
-		if(sessQueries.size()>=0 || sessQueries.size()<=1) {
+		if(sessQueries.size()>=0 && sessQueries.size()<=1) {
 	//		System.out.println("Session Empty !");
 			return false;
 		}
