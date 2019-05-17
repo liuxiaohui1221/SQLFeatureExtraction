@@ -121,11 +121,10 @@ public class IntentCreatorMultiThread extends Thread{
 	}
 	
 	public boolean isValidSession(ArrayList<String> sessQueries) {
-		if(sessQueries.size()>=0 && sessQueries.size()<=1) {
+		if((sessQueries.size()>=0 && sessQueries.size()<=1) || sessQueries.size()>=50) {
 	//		System.out.println("Session Empty !");
 			return false;
-		} else if(sessQueries.size()>=50)
-			return false;
+		} 
 		else if(sessQueries.size()==2 && sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") && 
 				sessQueries.get(1).contains("UPDATE `jos_session` SET `time`="))
 			return false;
@@ -264,8 +263,8 @@ public class IntentCreatorMultiThread extends Thread{
 			//	System.out.println("Session "+sessionID+"'s validity: "+validSess);
 				numValidSessions++;
 				numValidQueries+=curSessQueries.size();
-				absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
-				//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
+				//absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
+				absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
 				absSessID++;
 			}
 			curSessQueries.clear();
