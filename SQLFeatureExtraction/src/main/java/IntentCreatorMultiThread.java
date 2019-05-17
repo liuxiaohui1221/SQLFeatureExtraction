@@ -212,14 +212,14 @@ public class IntentCreatorMultiThread extends Thread{
 							query += " "+tokens[i];
 					}
 					sessionID = tokens[0];
-					if(!sessionID.equals(prevSessionID)) {
-						prevSessionID = sessionID;
-					} 
 //					System.out.println("Query: "+query);
 					query = query.trim();
 				}
 				curQueryIndex++;
 			}
+			if(!sessionID.equals(prevSessionID)) {
+				prevSessionID = sessionID;
+			} 
 			//curQueryIndex = populateCurSessionQueries(curQueryIndex, sessionID, prevSessionID, curSessQueries); // index incremented within this method
 			// if sessQueries is not empty, check for repetitions
 			boolean validSess = isValidSession(curSessQueries);
