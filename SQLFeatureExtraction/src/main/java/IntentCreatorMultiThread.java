@@ -198,7 +198,8 @@ public class IntentCreatorMultiThread extends Thread{
 		while(curQueryIndex <= upperQueryIndex) {
 			while(sessionID.equals(prevSessionID) && curQueryIndex <=upperQueryIndex) { // iterates over all queries in a session, terminates on new session
 				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
-					curSessQueries.add(query);
+					if (!query.equals("SELECT VERSION()"))
+						curSessQueries.add(query);
 				}
 				//read queries session-wise
 				String line = this.sessQueries.get(curQueryIndex);
