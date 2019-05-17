@@ -223,7 +223,7 @@ public class IntentCreatorMultiThread extends Thread{
 			//curQueryIndex = populateCurSessionQueries(curQueryIndex, sessionID, prevSessionID, curSessQueries); // index incremented within this method
 			// if sessQueries is not empty, check for repetitions
 			boolean validSess = isValidSession(curSessQueries);
-			System.out.println("Session "+sessionID+"'s validity: "+isValid);
+			System.out.println("Session "+sessionID+"'s validity: "+validSess);
 			if(validSess) {
 				absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
 			}
