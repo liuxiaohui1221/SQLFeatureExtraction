@@ -192,7 +192,7 @@ public class IntentCreatorMultiThread extends Thread{
 		int curQueryIndex = lowerQueryIndex;
 		ArrayList<String> curSessQueries = new ArrayList<String>();
 		while(curQueryIndex <= upperQueryIndex) {
-			while(sessionID==prevSessionID) { // iterates over all queries in a session, terminates on new session
+			while(sessionID.equals(prevSessionID)) { // iterates over all queries in a session, terminates on new session
 				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
 					curSessQueries.add(query);
 				}

@@ -817,7 +817,7 @@ public class MINCFragmentIntent{
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
 			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries);
 			
-			String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 ORDER BY M.sublevel, M.parent, M.ordering";
+	/*		String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 ORDER BY M.sublevel, M.parent, M.ordering";
 			//query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.ordering = c.ordering WHERE m.published = 1 and m.params=c.params GROUP BY m.sublevel HAVING m.lft = 2 ORDER BY m.sublevel, m.parent, m.ordering";
 			//query = "SELECT AVG(menutype) from jos_menu";
 			//query = "SELECT DISTINCT a.*, f.name AS creatorname, b.count, \"\" AS thumbnail, \"\" AS storage, 1 AS display, 1 AS privacy, b.last_updated FROM jos_community_photos_albums AS a LEFT JOIN ((SELECT id, approvals FROM jos_community_groups) UNION (SELECT id, approvals FROM jos_community_courses)) d ON a.groupid = d.id LEFT JOIN jos_community_groups_members AS c ON a.groupid = c.groupid LEFT JOIN (SELECT albumid, creator, COUNT(*) AS count, MAX(created) AS last_updated FROM jos_community_photos WHERE permissions = 0 OR (permissions = 2 AND (creator = 0 OR owner = 0)) GROUP BY albumid, creator) b ON a.id = b.albumid AND a.creator = b.creator INNER JOIN jos_users AS f ON a.creator = f.id WHERE (a.permissions = 0 OR (a.permissions = 2 AND (a.creator = 0 OR a.owner = 0))) AND (a.groupid = 0 OR (a.groupid > 0 AND (d.approvals = 0 OR (d.approvals = 1 AND c.memberid = 0))))";
@@ -831,6 +831,7 @@ public class MINCFragmentIntent{
 				fragmentObj.printIntentVector();
 				fragmentObj.writeIntentVectorToTempFile(query);
 			}
+	*/
 		} catch(Exception e) {
 			e.printStackTrace();
 		}			
