@@ -183,21 +183,21 @@ public class IntentCreatorMultiThread extends Thread{
 		return absQueryID;
 	}
 	
-	public double appendToValidSessFile(String sessionID, double absQueryID, BufferedWriter bw, ArrayList<String> curSessQueries) throws Exception {
+	public double appendToValidSessFile(double absSessID, double absQueryID, BufferedWriter bw, ArrayList<String> curSessQueries) throws Exception {
 		int queryID = 0;
 		String concLine = "";
 		for(String query : curSessQueries) {
 			try {			
 				queryID++;
 				absQueryID++;
-				String to_append = "Session "+sessionID+", Query "+queryID+"; OrigQuery: "+query+"\n";
+				String to_append = "Session "+absSessID+", Query "+queryID+"; OrigQuery: "+query+"\n";
 				concLine += to_append;
 				bw.append(concLine);
 				bw.flush();
 				concLine = "";
 				if(absQueryID % 10000 == 0) {									
 //					System.out.println("Query: "+query);
-					System.out.println("ThreadID: "+this.threadID+", Appended SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
+					System.out.println("ThreadID: "+this.threadID+", Appended SessionID: "+absSessID+", queryID: "+queryID+", absQueryID: "+absQueryID);
 				}
 			} catch(Exception e) {
 				e.printStackTrace();
@@ -210,6 +210,7 @@ public class IntentCreatorMultiThread extends Thread{
 		MINCFragmentIntent.deleteIfExists(this.outputFile);
 		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
 		double absQueryID = 0;
+		double absSessID = 0;
 		String prevSessionID = "";
 		String sessionID = "";
 		String query = "";
@@ -253,8 +254,9 @@ public class IntentCreatorMultiThread extends Thread{
 			//	System.out.println("Session "+sessionID+"'s validity: "+validSess);
 				numValidSessions++;
 				numValidQueries+=curSessQueries.size();
-				absQueryID = appendToValidSessFile(sessionID, absQueryID, bw, curSessQueries);
+				absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
 				//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
+				absSessID++;
 			}
 			curSessQueries.clear();
 		}
