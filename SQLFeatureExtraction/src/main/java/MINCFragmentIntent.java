@@ -652,7 +652,7 @@ public class MINCFragmentIntent{
 		String line = null;
 		int i=0;
 		int absCount = 0;
-		while ((line=br.readLine())!=null  && absCount<300000+startLineNum) {
+		while ((line=br.readLine())!=null  && absCount<3000000+startLineNum) {
 			if(absCount>=startLineNum && line.contains("Query")) {
 				line = line.replace("\t"," ");
 				line = line.replaceAll("\\s+", " ");
