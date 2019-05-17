@@ -127,12 +127,14 @@ public class IntentCreatorMultiThread extends Thread{
 		boolean isValid = true;
 		String prevSessQuery = null;
 		for(String curSessQuery : sessQueries) {
+			if(!isValid)
+				return isValid;
 			if(prevSessQuery != null) {
 				StringMetric metric = StringMetrics.cosineSimilarity();
 				float cosineSim = metric.compare(curSessQuery, prevSessQuery);
-				System.out.println(curSessQuery+";"+prevSessQuery+"; cosineSim: "+cosineSim+"; isValid: "+isValid);
 				if(cosineSim > 0.9)
 					isValid = false; // curQuery is similar to prevQuery -- so repetition likely
+				System.out.println(curSessQuery+";"+prevSessQuery+"; cosineSim: "+cosineSim+"; isValid: "+isValid);
 			}
 			prevSessQuery = curSessQuery;
 		}
