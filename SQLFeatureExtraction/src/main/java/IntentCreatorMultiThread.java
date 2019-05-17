@@ -195,6 +195,8 @@ public class IntentCreatorMultiThread extends Thread{
 		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
 		int curQueryIndex = lowerQueryIndex;
 		ArrayList<String> curSessQueries = new ArrayList<String>();
+		int numValidSessions = 0;
+		int numValidQueries = 0;
 		while(curQueryIndex <= upperQueryIndex) {
 			while(sessionID.equals(prevSessionID) && curQueryIndex <=upperQueryIndex) { // iterates over all queries in a session, terminates on new session
 				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
@@ -226,9 +228,13 @@ public class IntentCreatorMultiThread extends Thread{
 			boolean validSess = isValidSession(curSessQueries);
 			if(validSess) {
 				System.out.println("Session "+sessionID+"'s validity: "+validSess);
-				absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
+				numValidSessions++;
+				numValidQueries+=curSessQueries.size();
+				//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
 			}
+			curSessQueries.clear();
 		}
+		System.out.println("Total # Valid Sessions: "+numValidSessions+", # Valid Queries: "+numValidQueries);
 	}
 	
 	public void run(){
