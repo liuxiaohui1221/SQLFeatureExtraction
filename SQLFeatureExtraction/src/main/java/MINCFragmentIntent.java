@@ -632,6 +632,7 @@ public class MINCFragmentIntent{
 	public static void deleteIfExists(String fileName) throws Exception{
 		File outFile = new File(fileName);
 		boolean delIfExists = Files.deleteIfExists(outFile.toPath());
+		System.out.println("Deleting the file "+outFile.toPath());
 	}
 	
 	public static int updateSessionQueryCount(HashMap<String, Integer> sessionQueryCount, String sessID) throws Exception{
