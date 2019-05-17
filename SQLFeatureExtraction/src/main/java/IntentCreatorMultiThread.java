@@ -132,7 +132,7 @@ public class IntentCreatorMultiThread extends Thread{
 			if(prevSessQuery != null) {
 				StringMetric metric = StringMetrics.cosineSimilarity();
 				float cosineSim = metric.compare(curSessQuery, prevSessQuery);
-				if(cosineSim > 0.9)
+				if(cosineSim > 0.8)
 					isValid = false; // curQuery is similar to prevQuery -- so repetition likely
 	//			if(!isValid)
 	//				System.out.println(curSessQuery+";"+prevSessQuery+"; cosineSim: "+cosineSim+"; isValid: "+isValid);
@@ -195,7 +195,7 @@ public class IntentCreatorMultiThread extends Thread{
 				bw.append(concLine);
 				bw.flush();
 				concLine = "";
-				if(absQueryID % 1000 == 0) {									
+				if(absQueryID % 10000 == 0) {									
 //					System.out.println("Query: "+query);
 					System.out.println("ThreadID: "+this.threadID+", Appended SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
 				}
