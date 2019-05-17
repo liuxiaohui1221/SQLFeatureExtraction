@@ -123,25 +123,22 @@ public class IntentCreatorMultiThread extends Thread{
 	}
 	
 	public boolean isValidSession(ArrayList<String> sessQueries) {
-		if(sessQueries.size()==0) {
+		if(sessQueries.size()==0 || sessQueries.size()==1) {
 	//		System.out.println("Session Empty !");
 			return false;
 		}
-		if(sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") &&
-				sessQueries.get(1).contains("DELETE FROM jos_session WHERE ( time <")  &&
-				sessQueries.get(2).contains("SELECT * FROM jos_session WHERE session_id =")
-				)
+		else if(sessQueries.size()==2 && sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") && 
+				sessQueries.get(1).contains("UPDATE `jos_session` SET `time`="))
 			return false;
-		if(sessQueries.size()==1)
-			return false;
-		if(sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") && 
-				sessQueries.get(1).contains("UPDATE `jos_session` SET `time`=") &&
-				sessQueries.size()==2)
-			return false;
-		if(sessQueries.get(0).contains("SELECT usefulness FROM jos_community_usefulness WHERE userid =") &&
+		else if(sessQueries.size()>=3 && sessQueries.get(0).contains("SELECT usefulness FROM jos_community_usefulness WHERE userid =") &&
 				sessQueries.get(1).contains("SELECT usefulness FROM resource WHERE gid =") &&
 				sessQueries.get(2).contains("SELECT count(*) FROM jos_community_usefulness WHERE resourceid ="))
 			return false;
+		else if(sessQueries.size()>=3 && sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") &&
+				sessQueries.get(1).contains("DELETE FROM jos_session WHERE ( time <")  &&
+				sessQueries.get(2).contains("SELECT * FROM jos_session WHERE session_id ="))
+			return false;
+		
 		boolean isValid = true;
 		String prevSessQuery = null;
 		for(String curSessQuery : sessQueries) {
