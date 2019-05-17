@@ -130,7 +130,7 @@ public class IntentCreatorMultiThread extends Thread{
 			if(prevSessQuery != null) {
 				StringMetric metric = StringMetrics.cosineSimilarity();
 				float cosineSim = metric.compare(curSessQuery, prevSessQuery);
-				System.out.println(curSessQuery+";"+prevSessQuery+"; sim: "+cosineSim);
+				System.out.println(curSessQuery+";"+prevSessQuery+"; cosineSim: "+cosineSim+"; isValid: "+isValid);
 				if(cosineSim > 0.9)
 					isValid = false; // curQuery is similar to prevQuery -- so repetition likely
 			}
