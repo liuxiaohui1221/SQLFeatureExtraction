@@ -226,12 +226,11 @@ public class IntentCreatorMultiThread extends Thread{
 	
 	public void run(){
 		try {
-			System.out.println(pruneKeepModifyRepeatedQueries);
-			if (pruneKeepModifyRepeatedQueries == "KEEP" || pruneKeepModifyRepeatedQueries == "MODIFY") {	
+			if (pruneKeepModifyRepeatedQueries.equals("KEEP") || pruneKeepModifyRepeatedQueries.equals("MODIFY")) {	
 				System.out.println(pruneKeepModifyRepeatedQueries);
 				processQueriesKeepOrModifyReps();
 			}
-			else if(pruneKeepModifyRepeatedQueries == "PRUNE") {
+			else if(pruneKeepModifyRepeatedQueries.equals("PRUNE")) {
 				System.out.println(pruneKeepModifyRepeatedQueries);
 				processQueriesPruneReps();
 			}
