@@ -754,9 +754,10 @@ public class MINCFragmentIntent{
 			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(i, sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse, pruneKeepModifyRepeatedQueries);
 			intentMT.start();		
 		}
-		for(IntentCreatorMultiThread intentMT : intentMTs) {
+	/*	for(IntentCreatorMultiThread intentMT : intentMTs) {
 			intentMT.join();
 		}
+		*/
 	//	concatenateOutputFiles(outputSplitFiles, intentVectorFile);
 	}
 	
