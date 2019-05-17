@@ -269,7 +269,7 @@ public class IntentCreatorMultiThread extends Thread{
 			// if sessQueries is not empty, check for repetitions
 			boolean validSess = isValidSession(curSessQueries);
 			if(validSess) {
-			//	System.out.println("Session "+sessionID+"'s validity: "+validSess);
+				System.out.println("Session "+sessionID+"'s validity: "+validSess);
 				numValidSessions++;
 				numValidQueries+=curSessQueries.size();
 				absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
