@@ -28,14 +28,17 @@ public class IntentCreatorMultiThread extends Thread{
 	int threadID;
 	String pruneKeepModifyRepeatedQueries;
 	String prevQueryBitVector = null;
+	String refinedSessFile;
 	
-	public IntentCreatorMultiThread(int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries) {
+	public IntentCreatorMultiThread(int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, 
+			String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries, String refinedSessFile) {
 		this.sessQueries = sessQueries;
 		this.lowerUpperIndexBounds = lowerUpperIndexBounds;
 		this.outputFile = outputFile;
 		this.schParse = schParse;
 		this.threadID = threadID;
 		this.pruneKeepModifyRepeatedQueries = pruneKeepModifyRepeatedQueries;
+		this.refinedSessFile = refinedSessFile;
 	}
 	
 	public void processQueriesKeepOrModifyReps() throws Exception{
@@ -124,6 +127,21 @@ public class IntentCreatorMultiThread extends Thread{
 	//		System.out.println("Session Empty !");
 			return false;
 		}
+		if(sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") &&
+				sessQueries.get(1).contains("DELETE FROM jos_session WHERE ( time <")  &&
+				sessQueries.get(2).contains("SELECT * FROM jos_session WHERE session_id =")
+				)
+			return false;
+		if(sessQueries.size()==1)
+			return false;
+		if(sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") && 
+				sessQueries.get(1).contains("UPDATE `jos_session` SET `time`=") &&
+				sessQueries.size()==2)
+			return false;
+		if(sessQueries.get(0).contains("SELECT usefulness FROM jos_community_usefulness WHERE userid =") &&
+				sessQueries.get(1).contains("SELECT usefulness FROM resource WHERE gid =") &&
+				sessQueries.get(2).contains("SELECT count(*) FROM jos_community_usefulness WHERE resourceid ="))
+			return false;
 		boolean isValid = true;
 		String prevSessQuery = null;
 		for(String curSessQuery : sessQueries) {
@@ -207,8 +225,8 @@ public class IntentCreatorMultiThread extends Thread{
 	}
 	
 	public void processQueriesPruneReps() throws Exception{
-		MINCFragmentIntent.deleteIfExists(this.outputFile);
-		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
+		MINCFragmentIntent.deleteIfExists(this.refinedSessFile);
+		BufferedWriter bw = new BufferedWriter(new FileWriter(this.refinedSessFile, true));
 		double absQueryID = 0;
 		double absSessID = 0;
 		String prevSessionID = "";
@@ -216,7 +234,7 @@ public class IntentCreatorMultiThread extends Thread{
 		String query = "";
 		int lowerQueryIndex = this.lowerUpperIndexBounds.getKey();
 		int upperQueryIndex = this.lowerUpperIndexBounds.getValue();
-		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
+		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.refinedSessFile);
 		int curQueryIndex = lowerQueryIndex;
 		ArrayList<String> curSessQueries = new ArrayList<String>();
 		int numValidSessions = 0;
@@ -262,6 +280,7 @@ public class IntentCreatorMultiThread extends Thread{
 		}
 		System.out.println("Total # Valid Sessions: "+numValidSessions+", # Valid Queries: "+numValidQueries);
 	}
+	
 	
 	public void run(){
 		try {
