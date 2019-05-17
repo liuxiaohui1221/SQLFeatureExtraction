@@ -123,7 +123,7 @@ public class IntentCreatorMultiThread extends Thread{
 	}
 	
 	public boolean isValidSession(ArrayList<String> sessQueries) {
-		if(sessQueries.size()>=0 || sessQueries.size()<4) {
+		if(sessQueries.size()>=0 && sessQueries.size()<4) {
 	//		System.out.println("Session Empty !");
 			return false;
 		}
