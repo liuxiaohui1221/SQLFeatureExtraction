@@ -183,6 +183,29 @@ public class IntentCreatorMultiThread extends Thread{
 		return absQueryID;
 	}
 	
+	public double appendToValidSessFile(String sessionID, double absQueryID, BufferedWriter bw, ArrayList<String> curSessQueries) throws Exception {
+		int queryID = 0;
+		String concLine = "";
+		for(String query : curSessQueries) {
+			try {			
+				queryID++;
+				absQueryID++;
+				String to_append = "Session "+sessionID+", Query "+queryID+"; OrigQuery: "+query+"\n";
+				concLine += to_append;
+				bw.append(concLine);
+				bw.flush();
+				concLine = "";
+				if(absQueryID % 1000 == 0) {									
+//					System.out.println("Query: "+query);
+					System.out.println("ThreadID: "+this.threadID+", Appended SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
+				}
+			} catch(Exception e) {
+				e.printStackTrace();
+			}
+		}
+		return absQueryID;
+	}
+	
 	public void processQueriesPruneReps() throws Exception{
 		MINCFragmentIntent.deleteIfExists(this.outputFile);
 		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
@@ -230,6 +253,7 @@ public class IntentCreatorMultiThread extends Thread{
 			//	System.out.println("Session "+sessionID+"'s validity: "+validSess);
 				numValidSessions++;
 				numValidQueries+=curSessQueries.size();
+				absQueryID = appendToValidSessFile(sessionID, absQueryID, bw, curSessQueries);
 				//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
 			}
 			curSessQueries.clear();
