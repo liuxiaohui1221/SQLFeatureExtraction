@@ -154,8 +154,8 @@ public class IntentCreatorMultiThread extends Thread{
 			if(!isValid)
 				return false;
 			if(prevSessQuery != null) {
-				if (containsRepeatedPatterns(prevSessQuery, curSessQuery))
-					return false;
+			//	if (containsRepeatedPatterns(prevSessQuery, curSessQuery))
+			//		return false; 
 				StringMetric metric = StringMetrics.cosineSimilarity();
 				float cosineSim = metric.compare(curSessQuery, prevSessQuery);
 				if(cosineSim > 0.8)
