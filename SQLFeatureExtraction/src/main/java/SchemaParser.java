@@ -167,7 +167,7 @@ public class SchemaParser {
 				st = st.trim();
 				String key = st.split("=")[0];
 				String val = homeDir+"/"+st.split("=")[1];
-				if(key.contains("MINC_NUM_THREADS") || key.contains("MINC_START_SESS_INDEX") || key.contains("MINC_START_LINE_NUM"))
+				if(key.contains("MINC_NUM_THREADS") || key.contains("MINC_START_SESS_INDEX") || key.contains("MINC_START_LINE_NUM") || key.contains("MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES"))
 					val = st.split("=")[1];
 				configDict.put(key, val);
 			} 

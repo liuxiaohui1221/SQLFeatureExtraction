@@ -180,7 +180,6 @@ public class IntentCreatorMultiThread extends Thread{
 	
 	public void processQueriesPruneReps() throws Exception{
 		assert (pruneKeepModifyRepeatedQueries == "PRUNE");
-		System.out.println("Entered Fn");
 		MINCFragmentIntent.deleteIfExists(this.outputFile);
 		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
 		double absQueryID = 0;
@@ -212,7 +211,7 @@ public class IntentCreatorMultiThread extends Thread{
 					if(!sessionID.equals(prevSessionID)) {
 						prevSessionID = sessionID;
 					} 
-					System.out.println("Query: "+query);
+//					System.out.println("Query: "+query);
 					query = query.trim();
 				}
 				curQueryIndex++;
@@ -228,7 +227,6 @@ public class IntentCreatorMultiThread extends Thread{
 	
 	public void run(){
 		try {
-			System.out.println("Entered Run");
 			System.out.println(pruneKeepModifyRepeatedQueries);
 			assert (pruneKeepModifyRepeatedQueries == "PRUNE" || pruneKeepModifyRepeatedQueries == "KEEP" || pruneKeepModifyRepeatedQueries == "MODIFY");
 			if (pruneKeepModifyRepeatedQueries == "KEEP" || pruneKeepModifyRepeatedQueries == "MODIFY") {	

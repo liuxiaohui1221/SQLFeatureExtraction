@@ -632,7 +632,6 @@ public class MINCFragmentIntent{
 	public static void deleteIfExists(String fileName) throws Exception{
 		File outFile = new File(fileName);
 		boolean delIfExists = Files.deleteIfExists(outFile.toPath());
-		System.out.println("Deleting the file "+outFile.toPath());
 	}
 	
 	public static int updateSessionQueryCount(HashMap<String, Integer> sessionQueryCount, String sessID) throws Exception{
@@ -751,9 +750,7 @@ public class MINCFragmentIntent{
 		System.out.println("Defined Output File Splits Across Threads");
 		ArrayList<IntentCreatorMultiThread> intentMTs = new ArrayList<IntentCreatorMultiThread>();
 		for(int i=0; i<numThreads; i++) {
-			System.out.println("I am here");
 			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(i, sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse, pruneKeepModifyRepeatedQueries);
-			System.out.println("Created IntentObj");
 			intentMT.start();		
 		}
 	/*	for(IntentCreatorMultiThread intentMT : intentMTs) {
