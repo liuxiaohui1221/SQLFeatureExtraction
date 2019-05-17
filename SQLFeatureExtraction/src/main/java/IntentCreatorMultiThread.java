@@ -122,6 +122,19 @@ public class IntentCreatorMultiThread extends Thread{
 		}
 	}
 	
+	public boolean containsRepeatedPatterns(String prevSessQuery, String curSessQuery) {
+		if(prevSessQuery.contains("SELECT rsource_type FROM resource where gid =") 
+				&& curSessQuery.contains("SELECT name FROM jos_community_courses WHERE id ="))
+			return true;
+		else if(prevSessQuery.contains("SELECT usefulness FROM jos_community_usefulness WHERE userid =") 
+				&& curSessQuery.contains("SELECT usefulness FROM resource WHERE gid ="))
+			return true;
+		else if(prevSessQuery.contains("SELECT count(*) FROM jos_community_usefulness WHERE resourceid =") 
+				&& curSessQuery.contains("SELECT usefulness FROM jos_community_usefulness WHERE userid ="))
+			return true;
+		return false;
+	}
+	
 	public boolean isValidSession(ArrayList<String> sessQueries) {
 		if(sessQueries.size()>=0 && sessQueries.size()<4) {
 	//		System.out.println("Session Empty !");
@@ -130,11 +143,6 @@ public class IntentCreatorMultiThread extends Thread{
 		else if(sessQueries.size()==2 && sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") && 
 				sessQueries.get(1).contains("UPDATE `jos_session` SET `time`="))
 			return false;
-/*		else if(sessQueries.size()>=3 && sessQueries.get(0).contains("SELECT usefulness FROM jos_community_usefulness WHERE userid =") &&
-				sessQueries.get(1).contains("SELECT usefulness FROM resource WHERE gid =") &&
-				sessQueries.get(2).contains("SELECT count(*) FROM jos_community_usefulness WHERE resourceid ="))
-			return false;
-*/
 		else if(sessQueries.size()>=3 && sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") &&
 				sessQueries.get(1).contains("DELETE FROM jos_session WHERE ( time <")  &&
 				sessQueries.get(2).contains("SELECT * FROM jos_session WHERE session_id ="))
@@ -144,8 +152,10 @@ public class IntentCreatorMultiThread extends Thread{
 		String prevSessQuery = null;
 		for(String curSessQuery : sessQueries) {
 			if(!isValid)
-				return isValid;
+				return false;
 			if(prevSessQuery != null) {
+				if (containsRepeatedPatterns(prevSessQuery, curSessQuery))
+					return false;
 				StringMetric metric = StringMetrics.cosineSimilarity();
 				float cosineSim = metric.compare(curSessQuery, prevSessQuery);
 				if(cosineSim > 0.8)
