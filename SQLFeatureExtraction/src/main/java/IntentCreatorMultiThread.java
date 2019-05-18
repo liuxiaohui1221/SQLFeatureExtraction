@@ -350,7 +350,7 @@ public class IntentCreatorMultiThread extends Thread{
 				System.out.println(pruneKeepModifyRepeatedQueries);
 				processQueriesPruneReps();
 			}
-			else if(pruneKeepModifyRepeatedQueries.equals("PRUNE")) {
+			else if(pruneKeepModifyRepeatedQueries.equals("PREPROCESS")) {
 				System.out.println(pruneKeepModifyRepeatedQueries);
 				processQueriesPreprocess();
 			}

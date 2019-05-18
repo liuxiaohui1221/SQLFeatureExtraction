@@ -764,7 +764,7 @@ public class MINCFragmentIntent{
 	//	deleteIfExists(intentVectorFile);
 	//	System.out.println("Deleted previous intent file");
 		ArrayList<String> sessQueries;
-		if(rawSessFile.contains("preprocessed"))
+		if(pruneKeepModifyRepeatedQueries.equals("PREPROCESS"))
 			sessQueries = countLinesPreProcessed(rawSessFile, startLineNum);
 		else
 			sessQueries = countLines(rawSessFile, startLineNum);
