@@ -690,7 +690,7 @@ public class MINCFragmentIntent{
 		return lines;
 	}
 	
-	public static ArrayList<Pair<Integer,Integer>> readLinesPerThread(int lowerIndexPerThread, int curThreadIndex, int numThreads, int numLinesPerThread, ArrayList<String> sessQueries, ArrayList<Pair<Integer,Integer>> inputSplits) throws Exception{
+	public static ArrayList<Pair<Integer,Integer>> readLinesPerThread(int lowerIndexPerThread, int curThreadIndex, int numThreads, int numLinesPerThread, ArrayList<String> sessQueries, ArrayList<Pair<Integer,Integer>> inputSplits, String pruneKeepModifyRepeatedQueries) throws Exception{
 		System.out.println("Splitting lines for thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread+" with lower Index: "+lowerIndexPerThread);
 		int i=0;
 		int runningIndex = Math.min(lowerIndexPerThread+numLinesPerThread-1, sessQueries.size()-1);
@@ -699,7 +699,10 @@ public class MINCFragmentIntent{
 		String curSessID = null;
 		runningIndex++;
 		while(runningIndex<sessQueries.size()){
-			curSessID = sessQueries.get(runningIndex).split(" ")[0];
+			if(pruneKeepModifyRepeatedQueries.equals("PREPROCESS"))
+				curSessID = sessQueries.get(runningIndex).trim().split("; ")[0].split(", ")[0].split(" ")[1];
+			else
+				curSessID = sessQueries.get(runningIndex).split(" ")[0];
 			if(curThreadIndex != numThreads-1 && !curSessID.equals(prevSessID))
 				break;
 			runningIndex++;
@@ -712,14 +715,14 @@ public class MINCFragmentIntent{
 		return inputSplits;
 	}
 	
-	public static ArrayList<Pair<Integer,Integer>> splitInputAcrossThreads(ArrayList<String> sessQueries, int numThreads) throws Exception{	
+	public static ArrayList<Pair<Integer,Integer>> splitInputAcrossThreads(ArrayList<String> sessQueries, int numThreads, String pruneKeepModifyRepeatedQueries) throws Exception{	
 		assert numThreads>0;
 		int numLinesPerThread = sessQueries.size()/numThreads;
 		assert numLinesPerThread > 1;
 		ArrayList<Pair<Integer,Integer>> inputSplits = new ArrayList<Pair<Integer,Integer>>();
 		int lowerIndexPerThread = 0;
 		for(int i=0; i<numThreads; i++) {
-			inputSplits = readLinesPerThread(lowerIndexPerThread, i, numThreads, numLinesPerThread, sessQueries, inputSplits);
+			inputSplits = readLinesPerThread(lowerIndexPerThread, i, numThreads, numLinesPerThread, sessQueries, inputSplits, pruneKeepModifyRepeatedQueries);
 			lowerIndexPerThread = inputSplits.get(i).getValue()+1; // upper index of data for current thread +1 will be the lower index for the next thread
 		}
 		return inputSplits;
@@ -769,7 +772,7 @@ public class MINCFragmentIntent{
 		else
 			sessQueries = countLines(rawSessFile, startLineNum);
 		System.out.println("Read sessQueries into main memory");
-		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(sessQueries, numThreads);
+		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(sessQueries, numThreads, pruneKeepModifyRepeatedQueries);
 		System.out.println("Split Input Across Threads");
 		ArrayList<String> outputSplitFiles = defineOutputSplits(tempLogDir, rawSessFile, numThreads);
 		System.out.println("Defined Output File Splits Across Threads");
