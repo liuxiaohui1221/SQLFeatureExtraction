@@ -52,9 +52,10 @@ public class IntentCreatorMultiThread extends Thread{
 			System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
 			for(int index = lowerIndex; index <= upperIndex; index++) {
 				String line = this.sessQueries.get(index);
-				String query = line.trim().split("; ")[1].split(": ")[1];
+				String[] tokens = line.trim().split(";(?=(?:[^\']*\'[^\']*\')*[^\']*$)");
+				String query = tokens[1].split(": ")[1];
 			//	System.out.println("Query: "+query);
-				String sessionID = line.trim().split("; ")[0].split(", ")[0].split(" ")[1];
+				String sessionID = tokens[0].split(", ")[0].split(" ")[1];
 				query = query.trim();
 				boolean validQuery = false;
 				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
