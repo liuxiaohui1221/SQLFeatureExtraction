@@ -645,6 +645,27 @@ public class MINCFragmentIntent{
 		return queryID;
 	}
 	
+	public static ArrayList<String> countLinesPreProcessed(String rawSessFile, int startLineNum) throws Exception{
+		System.out.println("Counting lines from "+rawSessFile);
+		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
+		ArrayList<String> lines = new ArrayList<String>();
+		String line = null;
+		int i=0;
+		int absCount = 0;
+		while ((line=br.readLine())!=null /*  && absCount<3000000+startLineNum*/) {
+			if(absCount>=startLineNum) {
+				lines.add(line);
+				i++;
+				if (i%100000 == 0)
+					System.out.println("Read "+i+" lines so far and absCount: "+absCount);
+			}
+			absCount++;
+		}
+		System.out.println("Read "+i+" lines so far and done with absCount: "+absCount);
+		br.close();
+		return lines;
+	}
+	
 	public static ArrayList<String> countLines(String rawSessFile, int startLineNum) throws Exception{
 		System.out.println("Counting lines from "+rawSessFile);
 		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
@@ -742,7 +763,11 @@ public class MINCFragmentIntent{
 	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads, int startLineNum, String pruneKeepModifyRepeatedQueries) throws Exception{
 	//	deleteIfExists(intentVectorFile);
 	//	System.out.println("Deleted previous intent file");
-		ArrayList<String> sessQueries = countLines(rawSessFile, startLineNum);
+		ArrayList<String> sessQueries;
+		if(rawSessFile.contains("preprocessed"))
+			sessQueries = countLinesPreProcessed(rawSessFile, startLineNum);
+		else
+			sessQueries = countLines(rawSessFile, startLineNum);
 		System.out.println("Read sessQueries into main memory");
 		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(sessQueries, numThreads);
 		System.out.println("Split Input Across Threads");

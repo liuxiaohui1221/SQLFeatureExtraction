@@ -39,8 +39,74 @@ public class IntentCreatorMultiThread extends Thread{
 		this.pruneKeepModifyRepeatedQueries = pruneKeepModifyRepeatedQueries;
 	}
 	
+	public void processQueriesPreprocess() throws Exception{
+		//	assert (pruneKeepModifyRepeatedQueries.equals("KEEP") || pruneKeepModifyRepeatedQueries.equals("MODIFY"));
+			MINCFragmentIntent.deleteIfExists(this.outputFile);
+			BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
+			double absQueryID = 0;
+			int queryID = 0;
+			String prevSessionID = "";
+			String concLine = "";
+			int lowerIndex = this.lowerUpperIndexBounds.getKey();
+			int upperIndex = this.lowerUpperIndexBounds.getValue();
+			System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
+			for(int index = lowerIndex; index <= upperIndex; index++) {
+				String line = this.sessQueries.get(index);
+				String query = line.trim().split("; ")[1].split(": ")[1];
+			//	System.out.println("Query: "+query);
+				String sessionID = line.trim().split("; ")[0].split(", ")[0].split(" ")[1];
+				query = query.trim();
+				boolean validQuery = false;
+				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
+					validQuery = true;
+				}					
+				try {						
+					MINCFragmentIntent fragmentObj = null;
+					if(validQuery) {
+						fragmentObj = new MINCFragmentIntent(query, this.schParse);
+				//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
+					}
+					if(fragmentObj!=null) {
+						validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
+				//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query obtained FragmentObj");
+					}
+					else
+						validQuery = false;
+					/*if(validQuery)
+						fragmentObj.printIntentVector();*/
+					if(validQuery) {
+			//			System.out.println("Inside Thread ID: "+this.threadID+" Created fragment vector writing it to file");
+						if(!sessionID.equals(prevSessionID)) {
+							queryID = 1;  // queryID starts with 1 not 0
+							prevSessionID = sessionID;
+						} 
+						queryID++;
+						absQueryID++;
+						String to_append = "Session "+sessionID+", Query "+queryID+"; OrigQuery: "+query+";"+fragmentObj.getIntentBitVector()+"\n";
+						concLine += to_append;
+							
+						bw.append(concLine);
+						bw.flush();
+						concLine = "";
+						if(absQueryID % 10 == 0) {									
+//							System.out.println("Query: "+query);
+							System.out.println("ThreadID: "+this.threadID+", Covered SessionID: "+sessionID+", queryID: "+queryID+", absQueryID: "+absQueryID);
+						}
+					}
+				} catch(Exception e) {
+					continue;
+				}
+				
+			}
+			if(!concLine.equals("")) {
+				bw.append(concLine);
+				bw.flush();
+			}
+		}
+		
+	
 	public void processQueriesKeepOrModifyReps() throws Exception{
-		assert (pruneKeepModifyRepeatedQueries == "KEEP" || pruneKeepModifyRepeatedQueries == "MODIFY");
+	//	assert (pruneKeepModifyRepeatedQueries.equals("KEEP") || pruneKeepModifyRepeatedQueries.equals("MODIFY"));
 		MINCFragmentIntent.deleteIfExists(this.outputFile);
 		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
 		double absQueryID = 0;
@@ -52,7 +118,7 @@ public class IntentCreatorMultiThread extends Thread{
 		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
 		for(int index = lowerIndex; index <= upperIndex; index++) {
 			String line = this.sessQueries.get(index);
-			if(line.contains("Query")) {
+			if((pruneKeepModifyRepeatedQueries.equals("KEEP") || pruneKeepModifyRepeatedQueries.equals("MODIFY")) && line.contains("Query")) {
 				String[] tokens = line.trim().split(" ");
 				String query = "";
 				for(int i=2; i<tokens.length; i++) {
@@ -88,9 +154,9 @@ public class IntentCreatorMultiThread extends Thread{
 							queryID = 1;  // queryID starts with 1 not 0
 							prevSessionID = sessionID;
 						} 
-						else if (pruneKeepModifyRepeatedQueries == "KEEP")
+						else if (pruneKeepModifyRepeatedQueries.equals("KEEP"))
 							queryID++;
-						else if(pruneKeepModifyRepeatedQueries == "MODIFY") {
+						else if(pruneKeepModifyRepeatedQueries.equals("MODIFY")) {
 							String curQueryBitVector = fragmentObj.getIntentBitVector();
 							if (curQueryBitVector.equals(prevQueryBitVector)) {
 								continue;
@@ -263,8 +329,9 @@ public class IntentCreatorMultiThread extends Thread{
 			//	System.out.println("Session "+sessionID+"'s validity: "+validSess);
 				numValidSessions++;
 				numValidQueries+=curSessQueries.size();
-				absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
-				//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
+				if(pruneKeepModifyRepeatedQueries.equals("PRUNE"))
+					absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
+					//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
 				absSessID++;
 			}
 			curSessQueries.clear();
@@ -283,6 +350,11 @@ public class IntentCreatorMultiThread extends Thread{
 				System.out.println(pruneKeepModifyRepeatedQueries);
 				processQueriesPruneReps();
 			}
+			else if(pruneKeepModifyRepeatedQueries.equals("PRUNE")) {
+				System.out.println(pruneKeepModifyRepeatedQueries);
+				processQueriesPreprocess();
+			}
+			
 		} catch(Exception e) {
 			e.printStackTrace();
 		}
