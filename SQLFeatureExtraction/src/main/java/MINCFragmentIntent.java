@@ -357,7 +357,7 @@ public class MINCFragmentIntent{
 	public String searchColDictForTableName(String colName) throws Exception{
 		for(Table table : this.tables) {
 			HashMap<String,String> MINCColumns = this.schParse.fetchMINCColumns();
-			String[] colArray = cleanColArrayString(MINCColumns.get(table.getName().toLowerCase()));
+			String[] colArray = cleanColArrayString(MINCColumns.get(table.getName().replace("`", "").toLowerCase()));
 			for(int i=0; i<colArray.length; i++) {
 				if (colArray[i].equals(colName))
 					return table.getName();
@@ -384,15 +384,15 @@ public class MINCFragmentIntent{
 			else {
 				// there should be a single table name in the from clause, else simply search for the first table name
 				if(this.tables.size()==1) 
-					tableName = this.tables.get(0).getName().toLowerCase();
+					tableName = this.tables.get(0).getName().replace("`", "").toLowerCase();
 				else
-					tableName = searchColDictForTableName(colName.toLowerCase());
+					tableName = searchColDictForTableName(colName.toLowerCase()).toLowerCase();
 				if(tableName == null)
 					continue;
 			}
 			if (!tableColumnDict.containsKey(tableName))
 				tableColumnDict.put(tableName, new ArrayList<String>());
-			tableColumnDict.get(tableName).add(colName);		
+			tableColumnDict.get(tableName).add(colName.toLowerCase());		
 		}
 		return tableColumnDict;
 	}
@@ -846,21 +846,29 @@ public class MINCFragmentIntent{
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
 			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries);
 			
-	/*		String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 ORDER BY M.sublevel, M.parent, M.ordering";
+			String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
+					+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
+					+ "ORDER BY M.sublevel, M.parent, M.ordering";
 			//query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.ordering = c.ordering WHERE m.published = 1 and m.params=c.params GROUP BY m.sublevel HAVING m.lft = 2 ORDER BY m.sublevel, m.parent, m.ordering";
 			//query = "SELECT AVG(menutype) from jos_menu";
 			//query = "SELECT DISTINCT a.*, f.name AS creatorname, b.count, \"\" AS thumbnail, \"\" AS storage, 1 AS display, 1 AS privacy, b.last_updated FROM jos_community_photos_albums AS a LEFT JOIN ((SELECT id, approvals FROM jos_community_groups) UNION (SELECT id, approvals FROM jos_community_courses)) d ON a.groupid = d.id LEFT JOIN jos_community_groups_members AS c ON a.groupid = c.groupid LEFT JOIN (SELECT albumid, creator, COUNT(*) AS count, MAX(created) AS last_updated FROM jos_community_photos WHERE permissions = 0 OR (permissions = 2 AND (creator = 0 OR owner = 0)) GROUP BY albumid, creator) b ON a.id = b.albumid AND a.creator = b.creator INNER JOIN jos_users AS f ON a.creator = f.id WHERE (a.permissions = 0 OR (a.permissions = 2 AND (a.creator = 0 OR a.owner = 0))) AND (a.groupid = 0 OR (a.groupid > 0 AND (d.approvals = 0 OR (d.approvals = 1 AND c.memberid = 0))))";
-			//query = "SELECT * from jos_menu AS m, jos_components AS c WHERE m.published = 1 and m.parent=c.parent";
-			//query = "UPDATE `jos_session` SET `time`='1538611062',`userid`='0',`usertype`='',`username`='',`gid`='0',`guest`='1',`client_id`='0',`data`='__default|a:9:{s:15:\\\"session.counter\\\";i:89;s:19:\\\"session.timer.start\\\";i:1538610776;s:18:\\\"session.timer.last\\\";i:1538611055;s:17:\\\"session.timer.now\\\";i:1538611060;s:22:\\\"session.client.browser\\\";s:71:\\\"Mozilla/5.0 (compatible; SEOkicks; +https://www.seokicks.de/robot.html)\\\";s:8:\\\"registry\\\";O:9:\\\"JRegistry\\\":3:{s:17:\\\"_defaultNameSpace\\\";s:7:\\\"session\\\";s:9:\\\"_registry\\\";a:1:{s:7:\\\"session\\\";a:1:{s:4:\\\"data\\\";O:8:\\\"stdClass\\\":0:{}}}s:7:\\\"_errors\\\";a:0:{}}s:4:\\\"user\\\";O:5:\\\"JUser\\\":19:{s:2:\\\"id\\\";i:0;s:4:\\\"name\\\";N;s:8:\\\"username\\\";N;s:5:\\\"email\\\";N;s:8:\\\"password\\\";N;s:14:\\\"password_clear\\\";s:0:\\\"\\\";s:8:\\\"usertype\\\";N;s:5:\\\"block\\\";N;s:9:\\\"sendEmail\\\";i:0;s:3:\\\"gid\\\";i:0;s:12:\\\"registerDate\\\";N;s:13:\\\"lastvisitDate\\\";N;s:10:\\\"activation\\\";N;s:6:\\\"params\\\";N;s:3:\\\"aid\\\";i:0;s:5:\\\"guest\\\";i:1;s:7:\\\"_params\\\";O:10:\\\"JParameter\\\":7:{s:4:\\\"_raw\\\";s:0:\\\"\\\";s:4:\\\"_xml\\\";N;s:9:\\\"_elements\\\";a:0:{}s:12:\\\"_elementPath\\\";a:1:{i:0;s:58:\\\"/var/www/html/minc/libraries/joomla/html/parameter/element\\\";}s:17:\\\"_defaultNameSpace\\\";s:8:\\\"_default\\\";s:9:\\\"_registry\\\";a:1:{s:8:\\\"_default\\\";a:1:{s:4:\\\"data\\\";O:8:\\\"stdClass\\\":0:{}}}s:7:\\\"_errors\\\";a:0:{}}s:9:\\\"_errorMsg\\\";N;s:7:\\\"_errors\\\";a:0:{}}s:8:\\\"view-926\\\";b:1;s:13:\\\"session.token\\\";s:32:\\\"50cf27c9c56d1d64c5a1203e192fc4e6\\\";}' WHERE session_id='buledanlab7lhtd5tpc6jcp5t5' and published=1";
+			//query = "SELECT * from jos_menu AS m, jos_components AS c WHERE m.published = 1 and m.parent=\"X\"";
+			//query = "UPDATE `jos_session` SET `time`='1538611062',`userid`='0',`usertype`='',`username`='',`gid`='0',`guest`='1',`client_id`='0',`data`='__default|a:9:{s:15:\\\"session.counter\\\";i:89;s:19:\\\"session.timer.start\\\";i:1538610776;s:18:\\\"session.timer.last\\\";i:1538611055;s:17:\\\"session.timer.now\\\";i:1538611060;s:22:\\\"session.client.browser\\\";s:71:\\\"Mozilla/5.0 (compatible; SEOkicks; +https://www.seokicks.de/robot.html)\\\";s:8:\\\"registry\\\";O:9:\\\"JRegistry\\\":3:{s:17:\\\"_defaultNameSpace\\\";s:7:\\\"session\\\";s:9:\\\"_registry\\\";a:1:{s:7:\\\"session\\\";a:1:{s:4:\\\"data\\\";O:8:\\\"stdClass\\\":0:{}}}s:7:\\\"_errors\\\";a:0:{}}s:4:\\\"user\\\";O:5:\\\"JUser\\\":19:{s:2:\\\"id\\\";i:0;s:4:\\\"name\\\";N;s:8:\\\"username\\\";N;s:5:\\\"email\\\";N;s:8:\\\"password\\\";N;s:14:\\\"password_clear\\\";s:0:\\\"\\\";s:8:\\\"usertype\\\";N;s:5:\\\"block\\\";N;s:9:\\\"sendEmail\\\";i:0;s:3:\\\"gid\\\";i:0;s:12:\\\"registerDate\\\";N;s:13:\\\"lastvisitDate\\\";N;s:10:\\\"activation\\\";N;s:6:\\\"params\\\";N;s:3:\\\"aid\\\";i:0;s:5:\\\"guest\\\";i:1;s:7:\\\"_params\\\";O:10:\\\"JParameter\\\":7:{s:4:\\\"_raw\\\";s:0:\\\"\\\";s:4:\\\"_xml\\\";N;s:9:\\\"_elements\\\";a:0:{}s:12:\\\"_elementPath\\\";a:1:{i:0;s:58:\\\"/var/www/html/minc/libraries/joomla/html/parameter/element\\\";}s:17:\\\"_defaultNameSpace\\\";s:8:\\\"_default\\\";s:9:\\\"_registry\\\";a:1:{s:8:\\\"_default\\\";a:1:{s:4:\\\"data\\\";O:8:\\\"stdClass\\\":0:{}}}s:7:\\\"_errors\\\";a:0:{}}s:9:\\\"_errorMsg\\\";N;s:7:\\\"_errors\\\";a:0:{}}s:8:\\\"view-926\\\";b:1;s:13:\\\"session.token\\\";s:32:\\\"50cf27c9c56d1d64c5a1203e192fc4e6\\\";}' WHERE session_id='buledanlab7lhtd5tpc6jcp5t5'";
 			//query = "INSERT INTO `jos_session` ( `session_id`,`time`,`username`,`gid`,`guest`,`client_id` ) VALUES ( '7susns2ghsr6du1vic7g8cgja2','1538611066','','0','1','0' )";
 			//query = "DELETE FROM jos_session WHERE ( time < '1538607473' )";
+			//query = "SELECT COUNT(*) as count from jos_community_questions as a LEFT JOIN jos_community_groups AS b ON a.parentid = b.id LEFT JOIN jos_community_groups_members AS c ON a.parentid = c.groupid WHERE a.id = 331 AND (b.id IS NULL OR (b.id IS NOT NULL AND b.approvals=0))";
+			//query = "UPDATE jos_users SET lastvisitDate = \"2018-10-05 16\"";
+			//query = "INSERT INTO `jos_session` ( `session_id`,`time`,`username`,`gid`,`guest`,`client_id` ) VALUES ( 'ok12387ga01bj1pi49f9ffbuh0','1540013023','','0','1','0' )";
+			//query = "SELECT count(*) FROM jos_community_usefulness WHERE resourceid = 925";
+			//query = "SELECT id, title, module, position, content, showtitle, control, params FROM jos_modules AS m LEFT JOIN jos_modules_menu AS mm ON mm.moduleid = m.id WHERE m.published = 1 AND m.access <= 0 AND m.client_id = 0 AND ( mm.menuid = 53 OR mm.menuid = 0 ) ORDER BY position, ordering";
+			//query = "SELECT a.`userid` as _userid , a.`status` as _status , a.`level` as _level , a.`points` as _points, a.`posted_on` as _posted_on, a.`avatar` as _avatar , a.`thumb` as _thumb , a.`invite` as _invite, a.`params` as _cparams, a.`view` as _view, a.`friendcount` as _friendcount, a.`alias` as _alias, s.`userid` as _isonline, u.* FROM jos_community_users as a LEFT JOIN jos_users u ON u.`id`=a.`userid` LEFT OUTER JOIN jos_session s ON s.`userid`=a.`userid` AND s.client_id !='1'WHERE a.`userid`='0'";
 			MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse);
 			boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 			if(validQuery) {
 				fragmentObj.printIntentVector();
 				fragmentObj.writeIntentVectorToTempFile(query);
 			}
-	*/
+	
 		} catch(Exception e) {
 			e.printStackTrace();
 		}			

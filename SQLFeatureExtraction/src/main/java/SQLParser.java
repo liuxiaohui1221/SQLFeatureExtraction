@@ -233,8 +233,20 @@ public class SQLParser{
 			// for instance, table.col1=table2.col2 will produce a column and a column, whereas table.col1=constant will produce a column and a constant
 			ArrayList<Schema> selectJoinSchemas = new ArrayList<Schema>();
 			for (int i = 0; i < selects.size(); i++) {
-				Schema selectJoinSchema = Util.processExpression(selects.get(i));
-				selectJoinSchemas.add(selectJoinSchema);
+				if(selects.get(i).toString().contains(" ")) { // for exprs like "colName IS NULL", this turns IS NULL into a constant and adds it in between
+					Schema selectJoinSchema = Util.processExpression(selects.get(i));
+					selectJoinSchemas.add(selectJoinSchema);
+					Schema constSchema = new Schema(); // for constant equivalent expression
+					selectJoinSchemas.add(constSchema);
+				} 
+				else if(selects.get(i).toString().contains("\"")) { // not a column but a string constant, numerical constants and single parentheses are already covered
+					Schema constSchema = new Schema(); // for constant equivalent expression
+					selectJoinSchemas.add(constSchema);
+				} 
+				else {
+					Schema selectJoinSchema = Util.processExpression(selects.get(i));
+					selectJoinSchemas.add(selectJoinSchema);
+				}
 			}
 			for (int schemaIndex=0; schemaIndex<selectJoinSchemas.size(); schemaIndex+=2) {
 				//do checks at even junctures
@@ -299,8 +311,10 @@ public class SQLParser{
 						ArrayList<Column> joinPredicate = null;
 						for (int j = 0; j < joins.size(); j++) {
 							if (j%2==0) {
-								if(joinPredicate != null)
+								if(joinPredicate != null && joinPredicate.size() == 2)
 									joinPredicates.add(joinPredicate);
+								else if(joinPredicate != null && joinPredicate.size() == 1)
+									selectionColumns.add(joinPredicate.get(0));
 								joinPredicate = new ArrayList<Column>();
 							}
 							Schema joinSchema = Util.processExpression(joins.get(j));
@@ -308,8 +322,10 @@ public class SQLParser{
 								joinPredicate.add(new ExtendedColumn(joinSchema.getValues().get(k)));
 							}
 						}
-						if(joinPredicate!=null)
+						if(joinPredicate != null && joinPredicate.size() == 2)
 							joinPredicates.add(joinPredicate);
+						else if(joinPredicate != null && joinPredicate.size() == 1)
+							selectionColumns.add(joinPredicate.get(0));
 					}
 					
 					List<Column> columns = joinlist.get(i).getUsingColumns(); //USING clause is used to match the same column name from two diff tables
@@ -366,26 +382,46 @@ public class SQLParser{
 						Function f=(Function)sss;  		
 						String fName=f.getName();
 						if (fName.equals("max")){
+							if (((Function) sss).isAllColumns()) {
+								MAXColumns.add(new ExtendedColumn("*"));
+								projectionColumns.add(new ExtendedColumn("*"));
+							}
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								MAXColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
 						}
 						else if(fName.equals("min")){
+							if (((Function) sss).isAllColumns()) {
+								MINColumns.add(new ExtendedColumn("*"));
+								projectionColumns.add(new ExtendedColumn("*"));
+							}
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								MINColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
 						}
 						else if (fName.equals("sum")){
+							if (((Function) sss).isAllColumns()) {
+								SUMColumns.add(new ExtendedColumn("*"));
+								projectionColumns.add(new ExtendedColumn("*"));
+							}
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								SUMColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
 						}
 						else if (fName.equals("avg")){
+							if (((Function) sss).isAllColumns()) {
+								AVGColumns.add(new ExtendedColumn("*"));
+								projectionColumns.add(new ExtendedColumn("*"));
+							}
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								AVGColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
 						}
 						else if (fName.equals("count")){
+							if (((Function) sss).isAllColumns()) {
+								COUNTColumns.add(new ExtendedColumn("*"));
+								projectionColumns.add(new ExtendedColumn("*"));
+							}
 							for (int j = 0; j < selectSchema.getValues().size(); j++) {
 								COUNTColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
 							}
@@ -393,7 +429,7 @@ public class SQLParser{
 					}
 					for (int j = 0; j < selectSchema.getValues().size(); j++) {
 						projectionColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
-					}
+					} //both non-aggregate & aggregate columns are also added to the projection list
 				}
 				else if (ss instanceof SubSelect) {
 					SubSelect temp = (SubSelect) ss;
