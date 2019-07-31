@@ -12,6 +12,16 @@ import java.util.Map;
 import java.util.Set;
 
 import net.sf.jsqlparser.expression.BinaryExpression;
+import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.BooleanValue;
+import net.sf.jsqlparser.expression.DateValue;
+import net.sf.jsqlparser.expression.DoubleValue;
+import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.NullValue;
+import net.sf.jsqlparser.expression.TimestampValue;
+import net.sf.jsqlparser.expression.TimeValue;
+import net.sf.jsqlparser.expression.AnyComparisonExpression;
+import net.sf.jsqlparser.expression.AllComparisonExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
@@ -73,6 +83,71 @@ public class Util {
         
         expressionSchema.addAll(visitor.getColumns());
         return expressionSchema;
+	}
+	/*
+	 * import net.sf.jsqlparser.expression.LongValue;
+import net.sf.jsqlparser.expression.BooleanValue;
+import net.sf.jsqlparser.expression.DateValue;
+import net.sf.jsqlparser.expression.DoubleValue;
+import net.sf.jsqlparser.expression.StringValue;
+import net.sf.jsqlparser.expression.NullValue;
+import net.sf.jsqlparser.expression.TimestampValue;
+import net.sf.jsqlparser.expression.TimeValue;
+	 */
+	
+	public static boolean isColValInstance(Expression exp)
+	{
+		if (exp instanceof Column || exp instanceof LongValue || exp instanceof BooleanValue || exp instanceof DateValue || exp instanceof DoubleValue 
+				|| exp instanceof StringValue || exp instanceof NullValue || exp instanceof TimestampValue || exp instanceof TimeValue) {
+			return true;
+		}
+		return false;
+	}
+	
+	/**
+	 * This gets select expressions contained in a more complex expression
+	 * @param e
+	 * @return
+	 */
+	public static List<Expression> processSelectWithConstants(Expression e) 
+	{
+		List<Expression> retVal = new ArrayList<Expression>();
+
+		if (e instanceof Parenthesis) {
+			retVal.addAll(processSelectWithConstants(deleteParanthesis(e)));
+		} else if (e instanceof ExistsExpression) {
+			retVal.addAll(processSelectWithConstants(((ExistsExpression) e).getRightExpression()));
+		} else if (e instanceof BinaryExpression){
+			BinaryExpression a = (BinaryExpression)e;
+			Expression leftExp = a.getLeftExpression();
+			Expression rightExp = a.getRightExpression();
+			if (leftExp instanceof Column && isColValInstance(rightExp)) {
+				retVal.add(e);
+			}
+			else {
+				retVal.addAll(processSelectWithConstants(a.getLeftExpression()));
+				retVal.addAll(processSelectWithConstants(a.getRightExpression()));
+			}
+		} else if (e instanceof SubSelect) {
+			ColumnExpressionVisitor visitor = new ColumnExpressionVisitor(); 
+	        e.accept(visitor); 
+	        
+	        retVal.addAll(visitor.getColumns());
+		} else if (e instanceof InExpression) {
+			InExpression a = (InExpression)e;
+			retVal.addAll(processSelectWithConstants(a.getLeftExpression()));
+			
+			ItemsList it = a.getItemsList();
+			if (it != null) {
+				ColumnExpressionVisitor visitor = new ColumnExpressionVisitor();
+				it.accept(visitor);
+				retVal.addAll(visitor.getColumns());
+			}
+		} else {
+			retVal.add(e);
+		}
+		
+		return retVal;
 	}
 	
 	/**

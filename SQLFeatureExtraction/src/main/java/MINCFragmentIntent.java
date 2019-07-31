@@ -8,6 +8,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -105,6 +106,8 @@ public class MINCFragmentIntent{
 	HashSet<Column> AVGColumns = new HashSet<Column>();
 	HashSet<Column> SUMColumns = new HashSet<Column>();
 	HashSet<Column> COUNTColumns = new HashSet<Column>();
+	HashMap<Column,String> selPredOps;
+	HashMap<Column,String> selPredConstants;
 	String queryTypeBitMap;
 	String tableBitMap;
 	String groupByBitMap;
@@ -119,12 +122,17 @@ public class MINCFragmentIntent{
 	String AVGBitMap;
 	String SUMBitMap;
 	String COUNTBitMap;
+	String selPredOpBitMap;
+	String[] selPredOpList = new String[] {"=", "<>", "<=", ">=", "<", ">", "LIKE"};
+	String selPredColRangeBinBitMap;
 	public static HashMap<String, String> tableAlias = Global.tableAlias;
 	String queryType; // select , insert, update, delete
 	SchemaParser schParse; // used for retrieval of schema related information
-	public MINCFragmentIntent(String originalSQL, SchemaParser schParse) throws Exception{
+	boolean includeSelOpConst; // decide whether or not to include selOpConst
+	public MINCFragmentIntent(String originalSQL, SchemaParser schParse, boolean includeSelOpConst) throws Exception{
 		this.originalSQL = originalSQL.toLowerCase();
 		this.schParse = schParse;
+		this.includeSelOpConst = includeSelOpConst;
 		Global.tableAlias = new HashMap<String, String>();
 		InputStream stream = new ByteArrayInputStream(this.originalSQL.getBytes(StandardCharsets.UTF_8));
 		CCJSqlParser parser = new CCJSqlParser(stream);
@@ -199,6 +207,10 @@ public class MINCFragmentIntent{
 		bw.append("AVGBitMap:"+this.AVGBitMap+"\n");
 		bw.append("SUMBitMap:"+this.SUMBitMap+"\n");
 		bw.append("COUNTBitMap:"+this.COUNTBitMap+"\n");
+		if(this.includeSelOpConst) {
+			bw.append("selPredOpBitMap:"+this.selPredOpBitMap+"\n");
+			bw.append("selPredColRangeBinBitMap:"+this.selPredColRangeBinBitMap+"\n");
+		}
 		bw.flush();
 		bw.close();
 	}
@@ -221,6 +233,10 @@ public class MINCFragmentIntent{
 		System.out.println("AVGBitMap: "+this.AVGBitMap);
 		System.out.println("SUMBitMap: "+this.SUMBitMap);
 		System.out.println("COUNTBitMap: "+this.COUNTBitMap);
+		if(this.includeSelOpConst) {
+			System.out.println("selPredOpBitMap:"+this.selPredOpBitMap);
+			System.out.println("selPredColRangeBinBitMap:"+this.selPredColRangeBinBitMap);
+		}
 	}
 	
 	public void populateOperatorObjects(SQLParser parser) throws Exception{
@@ -237,10 +253,14 @@ public class MINCFragmentIntent{
 		this.AVGColumns = parser.getAVGColumns();
 		this.SUMColumns = parser.getSUMColumns();
 		this.COUNTColumns = parser.getCOUNTColumns();
+		if(this.includeSelOpConst) {
+			this.selPredOps = parser.getSelPredOps();
+			this.selPredConstants = parser.getSelPredConstants();
+		}
 	}
 	
 	public void parseQuery() throws Exception {
-		SQLParser parser = new SQLParser(this.originalSQL);
+		SQLParser parser = new SQLParser(this.originalSQL, this.includeSelOpConst);
 		parser.createQueryVector(this.statement);
 		populateOperatorObjects(parser);
 	}
@@ -307,6 +327,7 @@ public class MINCFragmentIntent{
 		return colArray.split(",\\s*");
 	}
 	
+	
 	public String setColumnsFromTable(String tableName, ArrayList<String> colNames) throws Exception{
 		if(colNames==null)
 			return setAllorNoneColumnsFromTable(tableName, "none");
@@ -366,6 +387,7 @@ public class MINCFragmentIntent{
 		return null;
 	}
 	
+	
 	public HashMap<String,ArrayList<String>> createTableColumnDict(HashSet<Column> colSet) throws Exception{
 		HashMap<String,ArrayList<String>> tableColumnDict = new HashMap<String,ArrayList<String>>();
 		for(Column c:colSet) {
@@ -396,7 +418,7 @@ public class MINCFragmentIntent{
 		}
 		return tableColumnDict;
 	}
-	public String createBitVectorForOpColSet(HashSet<Column> colSet) throws Exception {
+	public String createBitVectorForOpColSetOld(HashSet<Column> colSet) throws Exception {
 		String b = "";
 		if (colSet.size()==1 && colSet.iterator().next().toString().equals("*")) {
 				b = setAllColumns();
@@ -419,7 +441,44 @@ public class MINCFragmentIntent{
 		return b;
 	}
 	
+	public BitSet setAllColumnsFromTable(String tableName, BitSet bitVector) throws Exception{
+		HashMap<String,String> MINCColumns = this.schParse.fetchMINCColumns();
+		String[] colArray = cleanColArrayString(MINCColumns.get(tableName));
+		for(String colName : colArray) {
+			int bitPos = this.schParse.fetchMINCColBitPos().get(tableName+"."+colName);
+			bitVector.set(bitPos);
+		}
+		return bitVector;
+	}
 	
+	public String createBitVectorForOpColSet(HashSet<Column> colSet) throws Exception {
+		String b = "";
+		if (colSet.size()==1 && colSet.iterator().next().toString().equals("*")) {
+				b = setAllColumns();
+				appendToBitVectorString(b);
+				return b;
+		}
+		HashMap<String,ArrayList<String>> tableColumnDict = createTableColumnDict(colSet);
+		HashMap<String,Integer> schemaTables = this.schParse.fetchMINCTables();
+		HashMap<String,Integer> schemaCols = this.schParse.fetchMINCColBitPos();
+		BitSet bitVector = new BitSet(schemaCols.size());
+	//	HashSet<String> tableNames = new HashSet<String>(schemaTables.keySet());
+		for(String tableName:tableColumnDict.keySet()) {
+			ArrayList<String> colNames = tableColumnDict.get(tableName);
+			for(String colName : colNames) {
+				if(colName.equals("*")) {
+					bitVector = setAllColumnsFromTable(tableName, bitVector);
+				} else {
+					String fullColName = tableName+"."+colName;
+					int colBitPos = schemaCols.get(fullColName);
+					bitVector.set(colBitPos);
+				}
+			}
+		}
+		b = toString(bitVector, schemaCols.size());
+		this.appendToBitVectorString(b);
+		return b;
+	}
 	
 	public void createBitVectorForLimit() throws Exception{
 		if(this.limitList.size()==1) {
@@ -547,6 +606,103 @@ public class MINCFragmentIntent{
 		this.joinPredicatesBitMap = toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount());
 	}
 	
+	public Pair<String, String> retrieveTabColName(Column c) throws Exception{
+		Pair<String, String> tabColName;
+		String fullName = c.toString().replace("`", "");
+		String tableName;
+		String colName = fullName;
+		if(fullName.contains(".")) {
+			String[] tokens = fullName.split("\\.");
+			assert tokens.length == 2;
+			String tableNameAlias = tokens[0].toLowerCase();
+			colName = tokens[1].toLowerCase();
+			tableName = tableNameAlias; // if there is no tableAlias tableName is being used
+			if (Global.tableAlias.size()>0) 
+				tableName = Global.tableAlias.get(tableNameAlias).toLowerCase();	
+		}
+		else {
+			// there should be a single table name in the from clause, else simply search for the first table name
+			if(this.tables.size()==1) 
+				tableName = this.tables.get(0).getName().replace("`", "").toLowerCase();
+			else
+				tableName = searchColDictForTableName(colName.toLowerCase()).toLowerCase();
+			/*if(tableName == null)
+				continue;*/
+		}
+		/*if (!tableColumnDict.containsKey(tableName))
+			tableColumnDict.put(tableName, new ArrayList<String>());
+		tableColumnDict.get(tableName).add(colName.toLowerCase());	*/
+		tabColName = new Pair<>(tableName, colName.toLowerCase());
+		return tabColName;
+	}
+	
+	
+	
+	public int findSelColRangeBinToSet(String selColFullName, String constVal) throws Exception {
+		HashMap<String, ArrayList<Pair<String, String>>> selPredColRangeBins = this.schParse.fetchMINCSelPredColRangeBins();
+		HashMap<String, Pair<Integer, Integer>> selPredColRangeBitPos = this.schParse.fetchMINCSelPredColRangeBitPos();
+		ArrayList<Pair<String, String>> rangeBins = selPredColRangeBins.get(selColFullName);
+		String lo_str, hi_str;
+		int lo_index, hi_index;
+		for(int binIndex = 0; binIndex < rangeBins.size(); binIndex++) {
+			Pair<String, String> rangeBin = rangeBins.get(binIndex);
+			lo_str = rangeBin.getKey();
+			hi_str = rangeBin.getValue();
+			if(constVal.compareTo(lo_str)>=0 && constVal.compareTo(hi_str)<=0) {
+				lo_index = selPredColRangeBitPos.get(selColFullName).getKey();
+				hi_index = selPredColRangeBitPos.get(selColFullName).getValue();
+				assert lo_index + binIndex <= hi_index;
+				return lo_index + binIndex;
+			}
+		}
+		return -1;
+	}
+	
+	public void createBitVectorForSelPredColRangeBins() throws Exception {
+		String b = "";
+		int selColRangeBitMapSize = this.schParse.fetchMINCSelPredColRangeBitCount();
+		BitSet bitVector = new BitSet(selColRangeBitMapSize); // col range bit count
+		int bitPosToSet;
+		for(Column c : this.selPredConstants.keySet()) {
+			String constVal = this.selPredConstants.get(c);
+			String selColFullName = retrieveFullColumnName(c);
+			bitPosToSet = findSelColRangeBinToSet(selColFullName, constVal);
+			bitVector.set(bitPosToSet);
+		}
+		b = toString(bitVector, selColRangeBitMapSize);
+		this.appendToBitVectorString(b);
+		this.selPredColRangeBinBitMap = b;
+		return;
+	}
+	
+	public String retrieveFullColumnName(Column c) throws Exception{
+		Pair<String, String> tabColName = retrieveTabColName(c);
+		String tableName = tabColName.getKey();
+		String colName = tabColName.getValue();
+		String colFullName = tableName+"."+colName;
+		return colFullName;
+	}
+	
+	
+	public void createBitVectorForSelPredOps() throws Exception {
+		String b = "";
+		HashMap<String, Integer> selPredCols = this.schParse.fetchMINCSelPredCols();
+		int selBitMapSize = selPredCols.size() * this.selPredOpList.length;
+		BitSet bitVector = new BitSet(selBitMapSize);
+		for(Column c : this.selPredOps.keySet()) {
+			String opVal = this.selPredOps.get(c);
+			String selColFullName = retrieveFullColumnName(c);
+			int baseIndex = selPredCols.get(selColFullName) * this.selPredOpList.length;
+			int offset = Arrays.asList(this.selPredOpList).indexOf(opVal);
+			int bitPosToSet = baseIndex + offset;
+			bitVector.set(bitPosToSet);
+		}
+		b = toString(bitVector, selBitMapSize);
+		this.appendToBitVectorString(b);
+		this.selPredOpBitMap = b;
+		return;
+	}
+	
 	public void createFragmentVectors() throws Exception {
 		createBitVectorForQueryTypes();
 		//System.out.println("this.queryTypeBitMap: "+this.queryTypeBitMap);
@@ -576,6 +732,10 @@ public class MINCFragmentIntent{
 		//System.out.println("this.limitBitMap: "+this.limitBitMap+", length: "+this.limitBitMap.toCharArray().length);
 		createBitVectorForJoin();
 		//System.out.println("this.joinPredBitMap: "+this.joinPredicatesBitMap+", length: "+this.joinPredicatesBitMap.toCharArray().length);
+		if(this.includeSelOpConst) {
+			createBitVectorForSelPredOps();
+			createBitVectorForSelPredColRangeBins();
+		}
 	}
 	
 	public boolean parseQueryAndCreateFragmentVectors() throws Exception {
@@ -584,6 +744,7 @@ public class MINCFragmentIntent{
 				this.parseQuery();
 				this.createFragmentVectors();
 			} catch(Exception e) {
+				//e.printStackTrace();
 				return false;
 			}
 			return true;
@@ -594,7 +755,7 @@ public class MINCFragmentIntent{
 			//System.exit(0);
 		}		
 	}
-	public static void readFrom100KFile(String queryFile, String line, String prevSessionID, SchemaParser schParse, int queryID) throws Exception{
+	public static void readFrom100KFile(String queryFile, String line, String prevSessionID, SchemaParser schParse, int queryID, boolean includeSelOpConst) throws Exception{
 		BufferedReader br = new BufferedReader(new FileReader(queryFile));
 		while((line=br.readLine())!=null) {
 			if(line.contains("Query")) {
@@ -616,7 +777,7 @@ public class MINCFragmentIntent{
 					prevSessionID = sessionID;
 				} else
 					queryID++;
-				MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse);
+				MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
 				try {
 					boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 					if(validQuery)
@@ -763,7 +924,7 @@ public class MINCFragmentIntent{
 	}
 	
 	
-	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads, int startLineNum, String pruneKeepModifyRepeatedQueries) throws Exception{
+	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads, int startLineNum, String pruneKeepModifyRepeatedQueries, boolean includeSelOpConst) throws Exception{
 	//	deleteIfExists(intentVectorFile);
 	//	System.out.println("Deleted previous intent file");
 		ArrayList<String> sessQueries;
@@ -778,7 +939,7 @@ public class MINCFragmentIntent{
 		System.out.println("Defined Output File Splits Across Threads");
 		ArrayList<IntentCreatorMultiThread> intentMTs = new ArrayList<IntentCreatorMultiThread>();
 		for(int i=0; i<numThreads; i++) {
-			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(i, sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse, pruneKeepModifyRepeatedQueries);
+			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(i, sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			intentMT.start();		
 		}
 	/*	for(IntentCreatorMultiThread intentMT : intentMTs) {
@@ -788,7 +949,7 @@ public class MINCFragmentIntent{
 	//	concatenateOutputFiles(outputSplitFiles, intentVectorFile);
 	}
 	
-	public static void readFromConcurrentSessionsFile(String concSessFile, String intentVectorFile, String line, SchemaParser schParse) throws Exception{
+	public static void readFromConcurrentSessionsFile(String concSessFile, String intentVectorFile, String line, SchemaParser schParse, boolean includeSelOpConst) throws Exception{
 		BufferedReader br = new BufferedReader(new FileReader(concSessFile));
 		deleteIfExists(intentVectorFile);
 		HashMap<String, Integer> sessionQueryCount = new HashMap<String, Integer>();
@@ -801,7 +962,7 @@ public class MINCFragmentIntent{
 				String sessQueryID = tokens[0];
 				String sessID = sessQueryID.split(",")[0].split(" ")[1];
 				
-				MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse);
+				MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
 				boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 				/*if(validQuery)
 					fragmentObj.printIntentVector();*/
@@ -838,17 +999,20 @@ public class MINCFragmentIntent{
 		int numThreads = Integer.parseInt(configDict.get("MINC_NUM_THREADS"));
 		int startLineNum = Integer.parseInt(configDict.get("MINC_START_LINE_NUM"));
 		String pruneKeepModifyRepeatedQueries = configDict.get("MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES");
+		boolean includeSelOpConst = Boolean.parseBoolean(configDict.get("MINC_SEL_OP_CONST"));
 		try {
 			String line = null;
 			String prevSessionID = null;
 			int queryID = 0;
 			
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
-			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries);
+			//readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			
 			String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
 					+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
 					+ "ORDER BY M.sublevel, M.parent, M.ordering";
+			//query = "SELECT id FROM jos_menu WHERE `link` LIKE '%option=com_community&view=profile%' AND `published`=1";
+			//query = "SELECT COUNT(*) as count from jos_community_questions as a LEFT JOIN jos_community_groups AS b ON a.parentid = b.id LEFT JOIN jos_community_groups_members AS c ON a.parentid = c.groupid WHERE a.id = 2902 AND (b.id IS NULL OR (b.id IS NOT NULL AND b.approvals=0))";
 			//query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.ordering = c.ordering WHERE m.published = 1 and m.params=c.params GROUP BY m.sublevel HAVING m.lft = 2 ORDER BY m.sublevel, m.parent, m.ordering";
 			//query = "SELECT AVG(menutype) from jos_menu";
 			//query = "SELECT DISTINCT a.*, f.name AS creatorname, b.count, \"\" AS thumbnail, \"\" AS storage, 1 AS display, 1 AS privacy, b.last_updated FROM jos_community_photos_albums AS a LEFT JOIN ((SELECT id, approvals FROM jos_community_groups) UNION (SELECT id, approvals FROM jos_community_courses)) d ON a.groupid = d.id LEFT JOIN jos_community_groups_members AS c ON a.groupid = c.groupid LEFT JOIN (SELECT albumid, creator, COUNT(*) AS count, MAX(created) AS last_updated FROM jos_community_photos WHERE permissions = 0 OR (permissions = 2 AND (creator = 0 OR owner = 0)) GROUP BY albumid, creator) b ON a.id = b.albumid AND a.creator = b.creator INNER JOIN jos_users AS f ON a.creator = f.id WHERE (a.permissions = 0 OR (a.permissions = 2 AND (a.creator = 0 OR a.owner = 0))) AND (a.groupid = 0 OR (a.groupid > 0 AND (d.approvals = 0 OR (d.approvals = 1 AND c.memberid = 0))))";
@@ -862,7 +1026,7 @@ public class MINCFragmentIntent{
 			//query = "SELECT count(*) FROM jos_community_usefulness WHERE resourceid = 925";
 			//query = "SELECT id, title, module, position, content, showtitle, control, params FROM jos_modules AS m LEFT JOIN jos_modules_menu AS mm ON mm.moduleid = m.id WHERE m.published = 1 AND m.access <= 0 AND m.client_id = 0 AND ( mm.menuid = 53 OR mm.menuid = 0 ) ORDER BY position, ordering";
 			//query = "SELECT a.`userid` as _userid , a.`status` as _status , a.`level` as _level , a.`points` as _points, a.`posted_on` as _posted_on, a.`avatar` as _avatar , a.`thumb` as _thumb , a.`invite` as _invite, a.`params` as _cparams, a.`view` as _view, a.`friendcount` as _friendcount, a.`alias` as _alias, s.`userid` as _isonline, u.* FROM jos_community_users as a LEFT JOIN jos_users u ON u.`id`=a.`userid` LEFT OUTER JOIN jos_session s ON s.`userid`=a.`userid` AND s.client_id !='1'WHERE a.`userid`='0'";
-			MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse);
+			MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
 			boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 			if(validQuery) {
 				fragmentObj.printIntentVector();
@@ -924,5 +1088,60 @@ public class MINCFragmentIntent{
 		}
 		this.appendToBitVectorString(b);
 		return b;
+	}
+	
+	public BitSet setSelPredOpForCol(String colName, ArrayList<String> selPredColOps, BitSet b, int i) throws Exception{
+		for(String selPredColOp : selPredColOps) {
+			assert selPredColOp.split(".").length == 2; // colName.Op
+			String selPredCol = selPredColOp.split(".")[0];
+			String selPredOp = selPredColOp.split(".")[1];
+			if(colName.equals(selPredCol)) {
+				int opIndex = Arrays.asList(this.selPredOpList).indexOf(selPredOp);
+				b.set(i+opIndex);
+			}
+		}
+		return b;
+	}
+	
+	public String setSelPredOpsFromTable(String tableName, ArrayList<String> selPredColOps) throws Exception{
+		HashMap<String,String> MINCColumns = this.schParse.fetchMINCColumns();
+		String[] colArray = cleanColArrayString(MINCColumns.get(tableName));
+		BitSet b = new BitSet(colArray.length * this.selPredOpList.length);
+		if(selPredColOps != null) {
+			for(int i=0; i<colArray.length; i++) {
+				b = setSelPredOpForCol(colArray[i], selPredColOps, b, i);
+			}
+		}
+		return toString(b,colArray.length);
+	}
+	
+	public void createBitVectorForSelPredOpsOld() throws Exception {
+		String b = "";
+		HashMap<String, ArrayList<String>> selPredOpMap = new HashMap<String, ArrayList<String>>();
+		for(Column c : this.selPredOps.keySet()) {
+			String opVal = this.selPredOps.get(c);
+			Pair<String, String> tabColName = retrieveTabColName(c);
+			String tableName = tabColName.getKey();
+			String colName = tabColName.getValue();
+			if(!selPredOpMap.containsKey(tableName)) {
+				ArrayList<String> newOpMapEntry = new ArrayList<String>();
+				selPredOpMap.put(tableName, newOpMapEntry);
+			}
+			ArrayList<String> tempOpEntry = selPredOpMap.get(tableName);
+			tempOpEntry.add(colName+"."+opVal);
+			selPredOpMap.put(tableName, tempOpEntry);
+		}
+		HashMap<String,Integer> schemaTables = this.schParse.fetchMINCTables();
+		for(String tableName:schemaTables.keySet()) {
+			String bitMapPerTable;
+			if(selPredOpMap.containsKey(tableName)) {
+				bitMapPerTable = this.setSelPredOpsFromTable(tableName, selPredOpMap.get(tableName));
+			}
+			else
+				bitMapPerTable = this.setSelPredOpsFromTable(tableName, null);
+			b += bitMapPerTable;
+		}
+		this.appendToBitVectorString(b);
+		this.selPredOpBitMap = b;
 	}
  * */

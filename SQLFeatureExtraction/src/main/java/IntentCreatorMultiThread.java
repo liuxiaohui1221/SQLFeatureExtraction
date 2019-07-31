@@ -28,15 +28,17 @@ public class IntentCreatorMultiThread extends Thread{
 	int threadID;
 	String pruneKeepModifyRepeatedQueries;
 	String prevQueryBitVector = null;
+	boolean includeSelOpConst;
 	
 	public IntentCreatorMultiThread(int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, 
-			String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries) {
+			String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries, boolean includeSelOpConst) {
 		this.sessQueries = sessQueries;
 		this.lowerUpperIndexBounds = lowerUpperIndexBounds;
 		this.outputFile = outputFile;
 		this.schParse = schParse;
 		this.threadID = threadID;
 		this.pruneKeepModifyRepeatedQueries = pruneKeepModifyRepeatedQueries;
+		this.includeSelOpConst = includeSelOpConst;
 	}
 	
 	public void processQueriesPreprocess() throws Exception{
@@ -64,7 +66,7 @@ public class IntentCreatorMultiThread extends Thread{
 				try {						
 					MINCFragmentIntent fragmentObj = null;
 					if(validQuery) {
-						fragmentObj = new MINCFragmentIntent(query, this.schParse);
+						fragmentObj = new MINCFragmentIntent(query, this.schParse, this.includeSelOpConst);
 				//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
 					}
 					if(fragmentObj!=null) {
@@ -137,7 +139,7 @@ public class IntentCreatorMultiThread extends Thread{
 				try {						
 					MINCFragmentIntent fragmentObj = null;
 					if(validQuery) {
-						fragmentObj = new MINCFragmentIntent(query, this.schParse);
+						fragmentObj = new MINCFragmentIntent(query, this.schParse, this.includeSelOpConst);
 				//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
 					}
 					if(fragmentObj!=null) {
@@ -224,7 +226,7 @@ public class IntentCreatorMultiThread extends Thread{
 		for(String query : curSessQueries) {
 			try {						
 				MINCFragmentIntent fragmentObj = null;
-				fragmentObj = new MINCFragmentIntent(query, this.schParse);
+				fragmentObj = new MINCFragmentIntent(query, this.schParse, this.includeSelOpConst);
 				boolean validQuery = false;
 			//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
 				if(fragmentObj!=null) {

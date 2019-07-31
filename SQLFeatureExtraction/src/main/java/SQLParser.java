@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
@@ -97,6 +98,17 @@ public class SQLParser{
 	HashSet<Column> AVGColumns = new HashSet<Column>();
 	HashSet<Column> SUMColumns = new HashSet<Column>();
 	HashSet<Column> COUNTColumns = new HashSet<Column>();
+	boolean includeSelOpConst;
+	HashMap<Column,String> selPredOps;
+	HashMap<Column,String> selPredConstants;
+	
+	public HashMap<Column,String> getSelPredConstants() {
+		return this.selPredConstants;
+	}
+	
+	public HashMap<Column,String> getSelPredOps() {
+		return this.selPredOps;
+	}
 	
 	public List<Table> getTables(){
 		return this.tables;
@@ -150,8 +162,13 @@ public class SQLParser{
 		return this.COUNTColumns;
 	}
 	
-	public SQLParser(String originalSQL) {
+	public SQLParser(String originalSQL, boolean includeSelOpConst) {
 		this.originalSQL = originalSQL;
+		this.includeSelOpConst = includeSelOpConst;
+		if(this.includeSelOpConst) {
+			this.selPredOps = new HashMap<Column, String>();
+			this.selPredConstants = new HashMap<Column, String>();
+		}
 	}
 	
 	private void consumeTable(Table t) {
@@ -222,14 +239,132 @@ public class SQLParser{
 		}
 	}
 	
+	public void setSelPredOpConst(HashMap<Column,String> selPredOpConsts, Column selectionColumn, String OpConst) {
+		selPredOpConsts.put(selectionColumn, OpConst);
+		return;
+	}
+	
+	public Column getColumn(Schema schema) {
+		ExtendedColumn selectionColumn = null; 
+		for (int j = 0; j < schema.getValues().size(); j++) {
+			selectionColumn = new ExtendedColumn(schema.getValues().get(j)); // there is only one column
+		}
+		return selectionColumn;
+	}
+	
+	public void addSelectionPredicate(Schema leftSchema, BinaryExpression whereExp) {
+		ExtendedColumn selectionColumn = (ExtendedColumn)getColumn(leftSchema); 
+		if(selectionColumn ==null)
+			return;
+		this.selectionColumns.add(selectionColumn);
+		String Op = whereExp.getStringExpression();
+		
+		String rightExpStr = whereExp.getRightExpression().toString();
+		if(rightExpStr.contains("IS NULL")) {
+			setSelPredOpConst(this.selPredOps, selectionColumn, "=");
+			setSelPredOpConst(this.selPredConstants, selectionColumn, "NULL");
+		} else if(rightExpStr.contains("IS NOT NULL")) {
+			setSelPredOpConst(this.selPredOps, selectionColumn, "<>");
+			setSelPredOpConst(this.selPredConstants, selectionColumn, "NULL");
+		} else if(rightExpStr.contains("LIKE")) {
+			setSelPredOpConst(this.selPredOps, selectionColumn, "LIKE");
+			setSelPredOpConst(this.selPredConstants, selectionColumn, rightExpStr.split(" ")[rightExpStr.split(" ").length-1]);
+		} else {
+			setSelPredOpConst(this.selPredOps, selectionColumn, Op);
+			setSelPredOpConst(this.selPredConstants, selectionColumn, rightExpStr);
+		}
+	}
+	
+	public void addSelJoinPredicate(Schema leftSchema, Schema rightSchema, BinaryExpression whereExp) {
+		ExtendedColumn leftColumn = (ExtendedColumn)getColumn(leftSchema);
+		if(leftColumn ==null)
+			return;
+		String rightExpStr = whereExp.getRightExpression().toString();
+		String Op = whereExp.getStringExpression();
+		if(rightExpStr.contains("IS NULL")) {
+			this.selectionColumns.add(leftColumn);
+			setSelPredOpConst(this.selPredOps, leftColumn, "=");
+			setSelPredOpConst(this.selPredConstants, leftColumn, "NULL");
+		} else if(rightExpStr.contains("IS NOT NULL")) {
+			this.selectionColumns.add(leftColumn);
+			setSelPredOpConst(this.selPredOps, leftColumn, "<>");
+			setSelPredOpConst(this.selPredConstants, leftColumn, "NULL");
+		} else if(rightExpStr.contains("LIKE")) {
+			this.selectionColumns.add(leftColumn);
+			setSelPredOpConst(this.selPredOps, leftColumn, "LIKE");
+			setSelPredOpConst(this.selPredConstants, leftColumn, rightExpStr.split(" ")[rightExpStr.split(" ").length-1]);
+		} else if(rightExpStr.contains("\"")) {
+			this.selectionColumns.add(leftColumn);
+			setSelPredOpConst(this.selPredOps, leftColumn, Op);
+			setSelPredOpConst(this.selPredConstants, leftColumn, rightExpStr.split(" ")[rightExpStr.split(" ").length-1]);
+		}
+		else {
+			ArrayList<Column> joinPredicate = new ArrayList<Column>();
+			ExtendedColumn rightColumn = (ExtendedColumn)getColumn(rightSchema);
+			joinPredicate.add(leftColumn);
+			joinPredicate.add(rightColumn);
+			this.joinPredicates.add(joinPredicate);
+		}
+	}
+	
+	
+	public void parseSelJoinPredsWithConstants(List<Expression> whereExps) {
+		for(Expression whereExp : whereExps) {
+			if(whereExp instanceof BinaryExpression) {
+				Schema leftSchema = Util.processExpression(((BinaryExpression)whereExp).getLeftExpression());
+				Schema rightSchema = Util.processExpression(((BinaryExpression)whereExp).getRightExpression());
+				if(leftSchema.getValues().size() > 0 && rightSchema.getValues().size() == 0) {
+					addSelectionPredicate(leftSchema, (BinaryExpression)whereExp);
+				} else {
+					addSelJoinPredicate(leftSchema, rightSchema, (BinaryExpression)whereExp);
+				}
+			} 
+			else {
+				Schema leftSchema = Util.processExpression(whereExp);
+				if(leftSchema.getValues().size() > 0) {
+					ExtendedColumn leftColumn = (ExtendedColumn)getColumn(leftSchema);
+					this.selectionColumns.add(leftColumn);
+					if(leftColumn ==null)
+						return;
+					if(whereExp.toString().contains("IS NULL")) {
+						setSelPredOpConst(this.selPredOps, leftColumn, "=");
+						setSelPredOpConst(this.selPredConstants, leftColumn, "NULL");
+					} else if(whereExp.toString().contains("IS NOT NULL")) {
+						this.selectionColumns.add(leftColumn);
+						setSelPredOpConst(this.selPredOps, leftColumn, "<>");
+						setSelPredOpConst(this.selPredConstants, leftColumn, "NULL");
+					} 
+				}
+			}
+		}
+	}
+	
+	private void parseWhereOpsWithConstants(Expression where) {
+		if (where != null) {
+			// pop out the top iter
+			SelectItemListParser.correct(where, tables);
+			//breaking selection operators with AND
+			List<Expression> whereExps = Util.processSelectWithConstants(where);
+			// for instance, table.col1=table2.col2 will produce a column and a column, whereas table.col1=constant will produce a column and a constant
+			parseSelJoinPredsWithConstants(whereExps);			
+		}
+	}
+	
 	private void parseWhere(Expression where) {
+		if(this.includeSelOpConst)
+			parseWhereOpsWithConstants(where);
+		else
+			parseWhereOps(where);
+	}
+	
+	private void parseWhereOps(Expression where) {
 		if (where != null) {
 			// pop out the top iter
 			SelectItemListParser.correct(where, tables);
 			//breaking selection operators with AND
 			List<Expression> selects = Util.processSelect(where);
 			assert selects.size()%2==0; // number of selects should be even because every where predicate is a binary expression
-			// here we do a hack to obtain join predicates by counting that even numbered values are constants
+			// here we obtain join predicates by counting that even numbered values are constants
 			// for instance, table.col1=table2.col2 will produce a column and a column, whereas table.col1=constant will produce a column and a constant
 			ArrayList<Schema> selectJoinSchemas = new ArrayList<Schema>();
 			for (int i = 0; i < selects.size(); i++) {
@@ -271,6 +406,112 @@ public class SQLParser{
 		}
 	}
 	
+	private void parseJoinListOps(List<Join> joinlist, int queryOrder) {
+		for (int i = 0; i < joinlist.size(); i++) {
+			consumeFromItem(joinlist.get(i).getRightItem(), tables, queryOrder);
+			
+			Expression sss = joinlist.get(i).getOnExpression();
+			//System.out.println(sss);
+			if (sss != null) {
+				// pop out the top iter
+				SelectItemListParser.correct(sss, tables);
+				//breaking selection operators with AND
+				List<Expression> joins = Util.processSelect(sss);
+				ArrayList<Column> joinPredicate = null;
+				for (int j = 0; j < joins.size(); j++) {
+					if (j%2==0) {
+						if(joinPredicate != null && joinPredicate.size() == 2)
+							joinPredicates.add(joinPredicate);
+						else if(joinPredicate != null && joinPredicate.size() == 1)
+							selectionColumns.add(joinPredicate.get(0));
+						joinPredicate = new ArrayList<Column>();
+					}
+					Schema joinSchema = Util.processExpression(joins.get(j));
+					for (int k = 0; k < joinSchema.getValues().size(); k++) {							
+						joinPredicate.add(new ExtendedColumn(joinSchema.getValues().get(k)));
+					}
+				}
+				if(joinPredicate != null && joinPredicate.size() == 2)
+					joinPredicates.add(joinPredicate);
+				else if(joinPredicate != null && joinPredicate.size() == 1)
+					selectionColumns.add(joinPredicate.get(0));
+			}
+			
+			parseUsingColumns(joinlist, i);
+		}
+	}
+	
+	private void parseJoinList(List<Join> joinlist, int queryOrder) {
+		if(this.includeSelOpConst)
+			parseJoinListOpsWithSelPredConstants(joinlist, queryOrder);
+		else
+			parseJoinListOps(joinlist, queryOrder);
+	}
+	
+	private void parseUsingColumns(List<Join> joinlist, int i) {
+		List<Column> columns = joinlist.get(i).getUsingColumns(); //USING clause is used to match the same column name from two diff tables
+		if (columns != null) {
+			for (int j = 0; j < columns.size(); j++) {
+				//System.out.println(columns.get(j).toString());
+				Column column=(Column) columns.get(j);
+				if (column.getTable()==null||column.getTable().getName()==null){				  					
+					Column v=Global.getColumnFullName(column,tables);
+					column.setTable(v.getTable());
+					column.setColumnName(v.getColumnName());
+				}
+				else{				  
+					String tablename = column.getTable().getName();
+					Table t = new Table();
+					t.setName(tablename.toUpperCase());
+					column.setTable(t);
+				}
+				
+				//System.out.println(column.toString());
+				ArrayList<Column> joinPredicate = new ArrayList<Column>();
+				for(int numCol=0; numCol<2; numCol++) {
+					joinPredicate.add(new ExtendedColumn(column)); // add the same column twice -- [col1, col1]
+				}
+				this.joinPredicates.add(joinPredicate);
+			}
+		}
+		return;
+	}
+	
+	private void parseJoinListOpsWithSelPredConstants(List<Join> joinlist, int queryOrder) {
+		for (int i = 0; i < joinlist.size(); i++) {
+			consumeFromItem(joinlist.get(i).getRightItem(), tables, queryOrder);
+			
+			Expression sss = joinlist.get(i).getOnExpression();
+			//System.out.println(sss);
+			if (sss != null) {
+				// pop out the top iter
+				SelectItemListParser.correct(sss, tables);
+				//breaking selection operators with AND
+				List<Expression> joins = Util.processSelectWithConstants(sss);
+				parseSelJoinPredsWithConstants(joins);
+				/*ArrayList<Column> joinPredicate = null;
+				for (int j = 0; j < joins.size(); j++) {
+					if (j%2==0) {
+						if(joinPredicate != null && joinPredicate.size() == 2)
+							joinPredicates.add(joinPredicate);
+						else if(joinPredicate != null && joinPredicate.size() == 1)
+							selectionColumns.add(joinPredicate.get(0));
+						joinPredicate = new ArrayList<Column>();
+					}
+					Schema joinSchema = Util.processExpression(joins.get(j));
+					for (int k = 0; k < joinSchema.getValues().size(); k++) {							
+						joinPredicate.add(new ExtendedColumn(joinSchema.getValues().get(k)));
+					}
+				}
+				if(joinPredicate != null && joinPredicate.size() == 2)
+					joinPredicates.add(joinPredicate);
+				else if(joinPredicate != null && joinPredicate.size() == 1)
+					selectionColumns.add(joinPredicate.get(0)); */
+			}
+			parseUsingColumns(joinlist, i);		
+		}
+	}
+	
 	/**
 	 *  specifies how to execute Select,major part
 	 * @param s
@@ -298,62 +539,7 @@ public class SQLParser{
 			else {
 				//consumeFromItem(fromitem, tables, schemas);
 				consumeFromItem(fromitem, tables, queryOrder);
-				for (int i = 0; i < joinlist.size(); i++) {
-					consumeFromItem(joinlist.get(i).getRightItem(), tables, queryOrder);
-					
-					Expression sss = joinlist.get(i).getOnExpression();
-					//System.out.println(sss);
-					if (sss != null) {
-						// pop out the top iter
-						SelectItemListParser.correct(sss, tables);
-						//breaking selection operators with AND
-						List<Expression> joins = Util.processSelect(sss);
-						ArrayList<Column> joinPredicate = null;
-						for (int j = 0; j < joins.size(); j++) {
-							if (j%2==0) {
-								if(joinPredicate != null && joinPredicate.size() == 2)
-									joinPredicates.add(joinPredicate);
-								else if(joinPredicate != null && joinPredicate.size() == 1)
-									selectionColumns.add(joinPredicate.get(0));
-								joinPredicate = new ArrayList<Column>();
-							}
-							Schema joinSchema = Util.processExpression(joins.get(j));
-							for (int k = 0; k < joinSchema.getValues().size(); k++) {							
-								joinPredicate.add(new ExtendedColumn(joinSchema.getValues().get(k)));
-							}
-						}
-						if(joinPredicate != null && joinPredicate.size() == 2)
-							joinPredicates.add(joinPredicate);
-						else if(joinPredicate != null && joinPredicate.size() == 1)
-							selectionColumns.add(joinPredicate.get(0));
-					}
-					
-					List<Column> columns = joinlist.get(i).getUsingColumns(); //USING clause is used to match the same column name from two diff tables
-					if (columns != null) {
-						for (int j = 0; j < columns.size(); j++) {
-							//System.out.println(columns.get(j).toString());
-							Column column=(Column) columns.get(j);
-							if (column.getTable()==null||column.getTable().getName()==null){				  					
-								Column v=Global.getColumnFullName(column,tables);
-								column.setTable(v.getTable());
-								column.setColumnName(v.getColumnName());
-							}
-							else{				  
-								String tablename = column.getTable().getName();
-								Table t = new Table();
-								t.setName(tablename.toUpperCase());
-								column.setTable(t);
-							}
-							
-							//System.out.println(column.toString());
-							ArrayList<Column> joinPredicate = new ArrayList<Column>();
-							for(int numCol=0; numCol<2; numCol++) {
-								joinPredicate.add(new ExtendedColumn(column)); // add the same column twice -- [col1, col1]
-							}
-							this.joinPredicates.add(joinPredicate);
-						}
-					}
-				}
+				parseJoinList(joinlist, queryOrder);
 				//Collections.sort(this.scanList);
 			}
 
