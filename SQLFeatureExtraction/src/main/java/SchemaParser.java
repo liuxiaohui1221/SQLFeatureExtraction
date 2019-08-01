@@ -99,7 +99,7 @@ public class SchemaParser {
 			BufferedReader br = new BufferedReader(new FileReader(fn)); 
 			String st; 
 			while ((st = br.readLine()) != null) {
-				st = st.trim();
+				st = st.trim().toLowerCase();
 				String key = st.split(":")[0];
 				String right = st.split(":")[1].replace("[", "").replace("]", "");
 				ArrayList<String> joinPredVal = new ArrayList<String>();
@@ -124,7 +124,7 @@ public class SchemaParser {
 			BufferedReader br = new BufferedReader(new FileReader(fn)); 
 			String st;
 			while ((st = br.readLine()) != null) {
-				st = st.trim();
+				st = st.trim().toLowerCase();
 				String key = st.split(":")[0];
 				String right = st.split(":")[1];
 				String[] bitPos = right.split(",");
@@ -148,7 +148,7 @@ public class SchemaParser {
 			BufferedReader br = new BufferedReader(new FileReader(fn)); 
 			String st; 
 			while ((st = br.readLine()) != null) {
-				st = st.trim();
+				st = st.trim().toLowerCase();
 				String key = st.split(":")[0];
 				String val = st.split(":")[1];
 				MINCMap.put(key, val);
@@ -164,7 +164,7 @@ public class SchemaParser {
 			BufferedReader br = new BufferedReader(new FileReader(fn)); 
 			String st; 
 			while ((st = br.readLine()) != null) {
-				st = st.trim();
+				st = st.trim().toLowerCase();
 				String key = st.split(":")[0];
 				int val = Integer.parseInt(st.split(":")[1]);
 				this.MINCTables.put(key, val);
@@ -182,7 +182,7 @@ public class SchemaParser {
 			BufferedReader br = new BufferedReader(new FileReader(fn)); 
 			String st; 
 			while ((st = br.readLine()) != null) {
-				st = st.trim();
+				st = st.trim().toLowerCase();
 				String key = st.split(":")[0];
 				int val = Integer.parseInt(st.split(":")[1]);
 				this.MINCColBitPos.put(key, val);
@@ -200,7 +200,7 @@ public class SchemaParser {
 			BufferedReader br = new BufferedReader(new FileReader(fn)); 
 			String st; 
 			while ((st = br.readLine()) != null) {
-				st = st.trim();
+				st = st.trim().toLowerCase();
 				String key = st.split(":")[0];
 				String[] subArr = Arrays.copyOfRange(st.split(":"), 1, st.split(":").length);
 				String right = String.join(":", subArr).replace("[", "").replace("]", "");
@@ -250,7 +250,7 @@ public class SchemaParser {
 			String st;
 			int selColIndex;
 			while ((st = br.readLine()) != null) {
-				st = st.trim();
+				st = st.trim().toLowerCase();
 				String selColName = st.split(":")[0];
 				selColIndex = Integer.parseInt(st.split(":")[1]);
 				this.MINCSelPredCols.put(selColName, selColIndex);
