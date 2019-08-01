@@ -10,6 +10,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.TreeSet;
+import java.util.Arrays;
 import toolsForMetrics.Util;
 import javafx.util.Pair;
 import java.net.InetAddress;
@@ -21,7 +22,7 @@ public class SchemaParser {
 	HashMap<String,String> MINCColumns = new HashMap<String,String>();
 	HashMap<String,String> MINCColTypes = new HashMap<String,String>();
 	HashMap<String,Integer> MINCColBitPos = new HashMap<String,Integer>();
-	HashMap<String,ArrayList<Pair<String, String>>> MINCJoinPreds = new HashMap<String,ArrayList<Pair<String, String>>>();
+	HashMap<String,ArrayList<String>> MINCJoinPreds = new HashMap<String,ArrayList<String>>();
 	HashMap<String,Pair<Integer, Integer>> MINCJoinPredBitPos = new HashMap<String,Pair<Integer, Integer>>();
 	HashMap<String,Integer> MINCSelPredCols = new HashMap<String,Integer>();
 	HashMap<String,Pair<Integer,Integer>> MINCSelPredOpBitPos = new HashMap<String,Pair<Integer,Integer>>();
@@ -57,7 +58,7 @@ public class SchemaParser {
 		return this.MINCColBitPos;
 	}
 	
-	public HashMap<String,ArrayList<Pair<String,String>>> fetchMINCJoinPreds(){
+	public HashMap<String,ArrayList<String>> fetchMINCJoinPreds(){
 		return this.MINCJoinPreds;
 	}
 	
@@ -92,8 +93,8 @@ public class SchemaParser {
 	public int fetchMINCJoinPredBitCount() {
 		return this.MINCJoinPredBitCount;
 	}
-	
-	public void readIntoJoinPredDict(String fn, HashMap<String,ArrayList<Pair<String,String>>> MINCJoinPredDict) {
+		
+	public void readIntoJoinPredDict(String fn, HashMap<String,ArrayList<String>> MINCJoinPredDict) {
 		try {
 			BufferedReader br = new BufferedReader(new FileReader(fn)); 
 			String st; 
@@ -101,12 +102,13 @@ public class SchemaParser {
 				st = st.trim();
 				String key = st.split(":")[0];
 				String right = st.split(":")[1].replace("[", "").replace("]", "");
-				ArrayList<Pair<String,String>> joinPredVal = new ArrayList<Pair<String,String>>();
-				String[] joinPreds = right.split(",(?=([^\']*\'[^\']*\')*[^\']*$)");
+				ArrayList<String> joinPredVal = new ArrayList<String>();
+				String[] joinPreds = right.split("', '");
+				//String[] joinPreds = right.split(",(?=([^\']*\'[^\']*\')*[^\']*$)");
 				for(String joinPred : joinPreds) {
 					joinPred = joinPred.replace("'", "");
-					Pair<String,String> colPair = new Pair<>(joinPred.split(",")[0], joinPred.split(",")[1]);
-					joinPredVal.add(colPair);
+					//Pair<String,String> colPair = new Pair<>(joinPred.split(",")[0], joinPred.split(",")[1]);
+					joinPredVal.add(joinPred);
 				}
 				MINCJoinPredDict.put(key, joinPredVal);
 			} 
@@ -200,9 +202,11 @@ public class SchemaParser {
 			while ((st = br.readLine()) != null) {
 				st = st.trim();
 				String key = st.split(":")[0];
-				String right = st.split(":")[1].replace("[", "").replace("]", "");
+				String[] subArr = Arrays.copyOfRange(st.split(":"), 1, st.split(":").length);
+				String right = String.join(":", subArr).replace("[", "").replace("]", "");
 				ArrayList<Pair<String,String>> dictVal = new ArrayList<Pair<String,String>>();
-				String[] selPredColRangeBins = right.split(",(?=([^\']*\'[^\']*\')*[^\']*$)");
+				String[] selPredColRangeBins = right.split("', '");
+				//String[] selPredColRangeBins = right.split(",(?=([^\']*\'[^\']*\')*[^\']*$)");
 				for(String selPredColRangeBin : selPredColRangeBins) {
 					selPredColRangeBin = selPredColRangeBin.replace("'", "");
 					Pair<String,String> colPair = new Pair<>(selPredColRangeBin.split("%")[0], selPredColRangeBin.split("%")[1]);

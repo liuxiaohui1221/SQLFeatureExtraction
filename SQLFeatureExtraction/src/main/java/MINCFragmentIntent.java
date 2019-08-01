@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.TreeSet;
 
 import javafx.util.Pair;
@@ -576,7 +577,77 @@ public class MINCFragmentIntent{
        return Util.equals(pairToSet, set2);
 	}
 	
-	public void createBitVectorForJoin() throws Exception{
+	public HashMap<String,ArrayList<String>> createJoinDictQuery() throws Exception{
+		HashMap<String,ArrayList<String>> joinPredDictQuery = new HashMap<String,ArrayList<String>>();
+		for(ArrayList<Column> colPair : this.joinPredicates) {
+			String leftTable =null, leftCol=null, rightTable=null, rightCol=null;
+			assert colPair.size()==2;
+			for(int i=0; i<colPair.size(); i++) {
+				Column c = colPair.get(i);
+				String fullName = c.toString().replace("`", "");
+				String tableName;
+				String colName = fullName.toLowerCase();
+				if(fullName.contains(".")) {
+					String tableNameAlias = fullName.split("\\.")[0].toLowerCase();
+					colName = fullName.split("\\.")[1].toLowerCase();
+					tableName = tableNameAlias; // if there is no tableAlias tableName is being used
+					if (Global.tableAlias.size()>0) 
+						tableName = Global.tableAlias.get(tableNameAlias).toLowerCase();	
+				}
+				else {
+					// there should be a single table name in the from clause, else simply search for the first table name
+					if(this.tables.size()==1) 
+						tableName = this.tables.get(0).getName().toLowerCase();
+					else
+						tableName = searchColDictForTableName(colName);
+					if(tableName == null)
+						continue;
+				}
+				if(i==0) {
+					leftTable = tableName;
+					leftCol = colName;
+				} else if(i==1) {
+					rightTable = tableName;
+					rightCol = colName;
+				}
+			}
+			int leftTableIndex = this.schParse.fetchMINCTables().get(leftTable);
+			int rightTableIndex = this.schParse.fetchMINCTables().get(rightTable);
+			String joinColPair = null;
+			String joinTablePair = null;
+			if (leftTableIndex <= rightTableIndex) {
+				joinTablePair = leftTable+","+rightTable;
+				joinColPair = leftCol + "," + rightCol;
+			} else {
+				joinTablePair = rightTable+","+leftTable;
+				joinColPair = rightCol + "," + leftCol;
+			}
+			if (!joinPredDictQuery.containsKey(joinTablePair))
+				joinPredDictQuery.put(joinTablePair, new ArrayList<String>());
+			joinPredDictQuery.get(joinTablePair).add(joinColPair);	
+		}
+		return joinPredDictQuery;
+	}
+	
+	public void createBitVectorForJoin() throws Exception {
+		HashMap<String, ArrayList<String>> joinPredDictQuery = createJoinDictQuery();
+		HashMap<String,ArrayList<String>> joinPredDictSchema = this.schParse.fetchMINCJoinPreds();
+		HashMap<String,Pair<Integer,Integer>> joinPredBitPosSchema = this.schParse.fetchMINCJoinPredBitPos();
+		BitSet joinPredIntentVector = new BitSet(this.schParse.fetchMINCJoinPredBitCount());
+		for(String tablePairQuery : joinPredDictQuery.keySet()) {
+			ArrayList<String> joinPredListSchema = joinPredDictSchema.get(tablePairQuery);
+			ArrayList<String> joinPredListQuery = joinPredDictQuery.get(tablePairQuery);
+			Pair<Integer,Integer> startEndBitPos = joinPredBitPosSchema.get(tablePairQuery);
+			for(String joinPredQuery : joinPredListQuery) {
+				int bitIndex = startEndBitPos.getKey()+joinPredListSchema.indexOf(joinPredQuery);
+				joinPredIntentVector.set(bitIndex);
+			}
+		}
+		this.appendToBitVectorString(toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount()));
+		this.joinPredicatesBitMap = toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount());
+	}
+	
+/*	public void createBitVectorForJoinDeprecated() throws Exception{
 		//key is tablePair and value is a list of column pairs
 		HashMap<HashSet<String>,ArrayList<HashSet<String>>> joinPredDictQuery = convertColumnListToStringSet();
 		HashMap<String,ArrayList<Pair<String,String>>> joinPredDictSchema = this.schParse.fetchMINCJoinPreds();
@@ -605,7 +676,7 @@ public class MINCFragmentIntent{
 		this.appendToBitVectorString(toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount()));
 		this.joinPredicatesBitMap = toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount());
 	}
-	
+*/	
 	public Pair<String, String> retrieveTabColName(Column c) throws Exception{
 		Pair<String, String> tabColName;
 		String fullName = c.toString().replace("`", "");
@@ -636,26 +707,126 @@ public class MINCFragmentIntent{
 		return tabColName;
 	}
 	
+	public int fetchMatchingBucketIndex(HashMap<String, Pair<Integer, Integer>> selPredColRangeBitPos, String selColFullName, int binIndex) {
+		int lo_index = selPredColRangeBitPos.get(selColFullName).getKey();
+		int hi_index = selPredColRangeBitPos.get(selColFullName).getValue();
+		assert lo_index + binIndex <= hi_index;
+		return lo_index + binIndex;
+	}
 	
+	public static Set<String> longestCommonSubstrings(String s, String t) {
+	    int[][] table = new int[s.length()][t.length()];
+	    int longest = 0;
+	    Set<String> result = new HashSet<>();
+
+	    for (int i = 0; i < s.length(); i++) {
+	        for (int j = 0; j < t.length(); j++) {
+	            if (s.charAt(i) != t.charAt(j)) {
+	                continue;
+	            }
+
+	            table[i][j] = (i == 0 || j == 0) ? 1
+	                                             : 1 + table[i - 1][j - 1];
+	            if (table[i][j] > longest) {
+	                longest = table[i][j];
+	                result.clear();
+	            }
+	            if (table[i][j] == longest) {
+	                result.add(s.substring(i - longest + 1, i + 1));
+	            }
+	        }
+	    }
+	    return result;
+	}
+	
+	public static boolean isInteger(String s) {
+	    try { 
+	        Integer.parseInt(s); 
+	    } catch(NumberFormatException e) { 
+	        return false; 
+	    } catch(NullPointerException e) {
+	        return false;
+	    }
+	    // only got here if we didn't return false
+	    return true;
+	}
+	
+	public int findSelColRangeBinString(String constVal, ArrayList<Pair<String, String>> rangeBins, HashMap<String, ArrayList<Pair<String, String>>> selPredColRangeBins, 
+			HashMap<String, Pair<Integer, Integer>> selPredColRangeBitPos, String selColFullName) throws Exception {
+		String lo_str, hi_str;
+		constVal = constVal.replaceAll("^\'|\'$", "");
+		for(int binIndex = 0; binIndex < rangeBins.size(); binIndex++) {
+			Pair<String, String> rangeBin = rangeBins.get(binIndex);
+			lo_str = rangeBin.getKey();
+			hi_str = rangeBin.getValue();
+			// first look for %x% substring comparison
+			if(constVal.startsWith("%")){
+				String tempStr = constVal.replace("%", "");
+				if(lo_str.contains(tempStr) || hi_str.contains(tempStr)) {
+					int bucketIndex = fetchMatchingBucketIndex(selPredColRangeBitPos, selColFullName, binIndex);
+					return bucketIndex;
+				}	
+			}
+			int lo_compare = constVal.compareTo(lo_str);
+			int hi_compare = constVal.compareTo(hi_str);
+			if((lo_compare>=0 && hi_compare<=0) || (lo_str.equals("NULL") && hi_str.equals("NULL"))) {
+				int bucketIndex = fetchMatchingBucketIndex(selPredColRangeBitPos, selColFullName, binIndex);
+				return bucketIndex;
+			}
+		}
+		return -1;
+	}
+	
+	public int findSelColRangeBinInteger(String constVal, ArrayList<Pair<String, String>> rangeBins, HashMap<String, ArrayList<Pair<String, String>>> selPredColRangeBins, 
+			HashMap<String, Pair<Integer, Integer>> selPredColRangeBitPos, String selColFullName) throws Exception {
+		int lo, hi;
+		int constValInt = Integer.parseInt(constVal);
+		for(int binIndex = 0; binIndex < rangeBins.size(); binIndex++) {
+			Pair<String, String> rangeBin = rangeBins.get(binIndex);
+			if(rangeBin.getKey().equals("NULL") && rangeBin.getValue().equals("NULL")) {
+				int bucketIndex = fetchMatchingBucketIndex(selPredColRangeBitPos, selColFullName, binIndex);
+				return bucketIndex;
+			}
+			lo = Integer.parseInt(rangeBin.getKey());
+			hi = Integer.parseInt(rangeBin.getValue());
+			if(constValInt>=lo && constValInt<=hi) {
+				int bucketIndex = fetchMatchingBucketIndex(selPredColRangeBitPos, selColFullName, binIndex);
+				return bucketIndex;
+			}
+		}
+		return -1;
+	}
+	
+	public boolean checkForIntColType(String selColFullName) throws Exception {
+		String tableName = selColFullName.split("\\.")[0];
+		String colName = selColFullName.split("\\.")[1];
+		HashMap<String,String> MINCColumns = this.schParse.fetchMINCColumns();
+		HashMap<String, String> MINCColTypes = this.schParse.fetchMINCColTypes();
+		String[] colTypeArray = cleanColArrayString(MINCColTypes.get(tableName));
+		String[] colArray = cleanColArrayString(MINCColumns.get(tableName));
+		for(int i=0; i<colArray.length; i++) {
+			if (colArray[i].equals(colName)) {
+				String colType = colTypeArray[i];
+				if(colType.contains("int"))
+					return true;
+			}
+		}
+		return false;
+	}
 	
 	public int findSelColRangeBinToSet(String selColFullName, String constVal) throws Exception {
 		HashMap<String, ArrayList<Pair<String, String>>> selPredColRangeBins = this.schParse.fetchMINCSelPredColRangeBins();
 		HashMap<String, Pair<Integer, Integer>> selPredColRangeBitPos = this.schParse.fetchMINCSelPredColRangeBitPos();
 		ArrayList<Pair<String, String>> rangeBins = selPredColRangeBins.get(selColFullName);
-		String lo_str, hi_str;
-		int lo_index, hi_index;
-		for(int binIndex = 0; binIndex < rangeBins.size(); binIndex++) {
-			Pair<String, String> rangeBin = rangeBins.get(binIndex);
-			lo_str = rangeBin.getKey();
-			hi_str = rangeBin.getValue();
-			if(constVal.compareTo(lo_str)>=0 && constVal.compareTo(hi_str)<=0) {
-				lo_index = selPredColRangeBitPos.get(selColFullName).getKey();
-				hi_index = selPredColRangeBitPos.get(selColFullName).getValue();
-				assert lo_index + binIndex <= hi_index;
-				return lo_index + binIndex;
-			}
-		}
-		return -1;
+		boolean isInt = isInteger(constVal);
+		if(isInt)
+			isInt = checkForIntColType(selColFullName);
+		int matchingBucketIndex = -1;
+		if(isInt)
+			matchingBucketIndex = findSelColRangeBinInteger(constVal, rangeBins, selPredColRangeBins, selPredColRangeBitPos, selColFullName);
+		else
+			matchingBucketIndex = findSelColRangeBinString(constVal, rangeBins, selPredColRangeBins, selPredColRangeBitPos, selColFullName);
+		return matchingBucketIndex;
 	}
 	
 	public void createBitVectorForSelPredColRangeBins() throws Exception {
@@ -1019,7 +1190,7 @@ public class MINCFragmentIntent{
 			//query = "SELECT * from jos_menu AS m, jos_components AS c WHERE m.published = 1 and m.parent=\"X\"";
 			//query = "UPDATE `jos_session` SET `time`='1538611062',`userid`='0',`usertype`='',`username`='',`gid`='0',`guest`='1',`client_id`='0',`data`='__default|a:9:{s:15:\\\"session.counter\\\";i:89;s:19:\\\"session.timer.start\\\";i:1538610776;s:18:\\\"session.timer.last\\\";i:1538611055;s:17:\\\"session.timer.now\\\";i:1538611060;s:22:\\\"session.client.browser\\\";s:71:\\\"Mozilla/5.0 (compatible; SEOkicks; +https://www.seokicks.de/robot.html)\\\";s:8:\\\"registry\\\";O:9:\\\"JRegistry\\\":3:{s:17:\\\"_defaultNameSpace\\\";s:7:\\\"session\\\";s:9:\\\"_registry\\\";a:1:{s:7:\\\"session\\\";a:1:{s:4:\\\"data\\\";O:8:\\\"stdClass\\\":0:{}}}s:7:\\\"_errors\\\";a:0:{}}s:4:\\\"user\\\";O:5:\\\"JUser\\\":19:{s:2:\\\"id\\\";i:0;s:4:\\\"name\\\";N;s:8:\\\"username\\\";N;s:5:\\\"email\\\";N;s:8:\\\"password\\\";N;s:14:\\\"password_clear\\\";s:0:\\\"\\\";s:8:\\\"usertype\\\";N;s:5:\\\"block\\\";N;s:9:\\\"sendEmail\\\";i:0;s:3:\\\"gid\\\";i:0;s:12:\\\"registerDate\\\";N;s:13:\\\"lastvisitDate\\\";N;s:10:\\\"activation\\\";N;s:6:\\\"params\\\";N;s:3:\\\"aid\\\";i:0;s:5:\\\"guest\\\";i:1;s:7:\\\"_params\\\";O:10:\\\"JParameter\\\":7:{s:4:\\\"_raw\\\";s:0:\\\"\\\";s:4:\\\"_xml\\\";N;s:9:\\\"_elements\\\";a:0:{}s:12:\\\"_elementPath\\\";a:1:{i:0;s:58:\\\"/var/www/html/minc/libraries/joomla/html/parameter/element\\\";}s:17:\\\"_defaultNameSpace\\\";s:8:\\\"_default\\\";s:9:\\\"_registry\\\";a:1:{s:8:\\\"_default\\\";a:1:{s:4:\\\"data\\\";O:8:\\\"stdClass\\\":0:{}}}s:7:\\\"_errors\\\";a:0:{}}s:9:\\\"_errorMsg\\\";N;s:7:\\\"_errors\\\";a:0:{}}s:8:\\\"view-926\\\";b:1;s:13:\\\"session.token\\\";s:32:\\\"50cf27c9c56d1d64c5a1203e192fc4e6\\\";}' WHERE session_id='buledanlab7lhtd5tpc6jcp5t5'";
 			//query = "INSERT INTO `jos_session` ( `session_id`,`time`,`username`,`gid`,`guest`,`client_id` ) VALUES ( '7susns2ghsr6du1vic7g8cgja2','1538611066','','0','1','0' )";
-			//query = "DELETE FROM jos_session WHERE ( time < '1538607473' )";
+			query = "DELETE FROM jos_session WHERE ( time < '1538607473' )";
 			//query = "SELECT COUNT(*) as count from jos_community_questions as a LEFT JOIN jos_community_groups AS b ON a.parentid = b.id LEFT JOIN jos_community_groups_members AS c ON a.parentid = c.groupid WHERE a.id = 331 AND (b.id IS NULL OR (b.id IS NOT NULL AND b.approvals=0))";
 			//query = "UPDATE jos_users SET lastvisitDate = \"2018-10-05 16\"";
 			//query = "INSERT INTO `jos_session` ( `session_id`,`time`,`username`,`gid`,`guest`,`client_id` ) VALUES ( 'ok12387ga01bj1pi49f9ffbuh0','1540013023','','0','1','0' )";
