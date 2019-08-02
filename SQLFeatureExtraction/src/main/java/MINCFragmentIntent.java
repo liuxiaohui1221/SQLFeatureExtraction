@@ -474,13 +474,13 @@ public class MINCFragmentIntent{
 				} else {
 					String fullColName = tableName+"."+colName;
 					int colBitPos;
-					try {
+				//	try {
 						colBitPos = schemaCols.get(fullColName);
 						bitVector.set(colBitPos);
-					} catch(Exception e) {
-						//e.printStackTrace();
+				/*	} catch(Exception e) {
+						e.printStackTrace();
 						continue;
-					}
+					}  */
 				}
 			}
 		}
@@ -1206,6 +1206,8 @@ public class MINCFragmentIntent{
 			//query = "SELECT id, title, module, position, content, showtitle, control, params FROM jos_modules AS m LEFT JOIN jos_modules_menu AS mm ON mm.moduleid = m.id WHERE m.published = 1 AND m.access <= 0 AND m.client_id = 0 AND ( mm.menuid = 53 OR mm.menuid = 0 ) ORDER BY position, ordering";
 			//query = "SELECT a.`userid` as _userid , a.`status` as _status , a.`level` as _level , a.`points` as _points, a.`posted_on` as _posted_on, a.`avatar` as _avatar , a.`thumb` as _thumb , a.`invite` as _invite, a.`params` as _cparams, a.`view` as _view, a.`friendcount` as _friendcount, a.`alias` as _alias, s.`userid` as _isonline, u.* FROM jos_community_users as a LEFT JOIN jos_users u ON u.`id`=a.`userid` LEFT OUTER JOIN jos_session s ON s.`userid`=a.`userid` AND s.client_id !='1'WHERE a.`userid`='0'";
 			//query = "SELECT * from jos_community_fields_values where value = 'MINC'";
+			query = "SELECT count(*)  FROM jos_community_connection as a, jos_users as b WHERE a.`connect_from`='3637' AND a.`status`=1  AND a.`connect_to`=b.`id`  AND NOT EXISTS ( SELECT d.`blocked_userid` FROM `jos_community_blocklist` AS d WHERE d.`userid` = '3637' AND d.`blocked_userid` = a.`connect_to`)  ORDER BY a.`connection_id` DESC";
+			query = "SELECT COUNT(*) FROM `jos_community_groups_members` AS a INNER JOIN `jos_users` AS b WHERE b.id=a.memberid AND a.memberid NOT IN (SELECT userid from jos_community_courses_ta where courseid = 3569) AND a.groupid='3569' AND a.permissions='1'";
 			MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
 			boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 			if(validQuery) {
