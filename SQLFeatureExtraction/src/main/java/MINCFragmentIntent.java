@@ -473,8 +473,14 @@ public class MINCFragmentIntent{
 					bitVector = setAllColumnsFromTable(tableName, bitVector);
 				} else {
 					String fullColName = tableName+"."+colName;
-					int colBitPos = schemaCols.get(fullColName);
-					bitVector.set(colBitPos);
+					int colBitPos;
+					try {
+						colBitPos = schemaCols.get(fullColName);
+						bitVector.set(colBitPos);
+					} catch(Exception e) {
+						//e.printStackTrace();
+						continue;
+					}
 				}
 			}
 		}
@@ -917,8 +923,8 @@ public class MINCFragmentIntent{
 				this.parseQuery();
 				this.createFragmentVectors();
 			} catch(Exception e) {
-				//e.printStackTrace();
-				return false;
+				e.printStackTrace();
+				//return false;
 			}
 			return true;
 		}
@@ -1179,7 +1185,7 @@ public class MINCFragmentIntent{
 			int queryID = 0;
 			
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
-			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
+			//readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			
 			String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
 					+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
@@ -1199,6 +1205,7 @@ public class MINCFragmentIntent{
 			//query = "SELECT count(*) FROM jos_community_usefulness WHERE resourceid = 925";
 			//query = "SELECT id, title, module, position, content, showtitle, control, params FROM jos_modules AS m LEFT JOIN jos_modules_menu AS mm ON mm.moduleid = m.id WHERE m.published = 1 AND m.access <= 0 AND m.client_id = 0 AND ( mm.menuid = 53 OR mm.menuid = 0 ) ORDER BY position, ordering";
 			//query = "SELECT a.`userid` as _userid , a.`status` as _status , a.`level` as _level , a.`points` as _points, a.`posted_on` as _posted_on, a.`avatar` as _avatar , a.`thumb` as _thumb , a.`invite` as _invite, a.`params` as _cparams, a.`view` as _view, a.`friendcount` as _friendcount, a.`alias` as _alias, s.`userid` as _isonline, u.* FROM jos_community_users as a LEFT JOIN jos_users u ON u.`id`=a.`userid` LEFT OUTER JOIN jos_session s ON s.`userid`=a.`userid` AND s.client_id !='1'WHERE a.`userid`='0'";
+			//query = "SELECT * from jos_community_fields_values where value = 'MINC'";
 			MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
 			boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 			if(validQuery) {

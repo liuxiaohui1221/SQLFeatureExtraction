@@ -81,6 +81,7 @@ import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubJoin;
 import net.sf.jsqlparser.statement.select.SubSelect;
+import net.sf.jsqlparser.statement.select.Union;
 
 public class SQLParser{
 	String originalSQL;
@@ -217,7 +218,7 @@ public class SQLParser{
 		} else if (fromitem instanceof SubSelect){
 			SubSelect temp = (SubSelect) fromitem;
 			
-			executeSelect(temp.getSelectBody(), queryOrder);
+			executeSelectWithAlias(temp.getSelectBody(), queryOrder, temp.getAlias()); // recursively passes the alias down into the subselect
 		}
 	}
 	
@@ -696,10 +697,27 @@ public class SQLParser{
 		*/ 
 	}
 	
+	private void executeSelectWithAlias(SelectBody body, int queryOrder, String alias){
+		if (body instanceof PlainSelect){
+			((PlainSelect) body).getFromItem().setAlias(alias);
+			executePlainSelect((PlainSelect)body, queryOrder);
+		} else if (body instanceof Union) {
+			List<PlainSelect> selectItems = ((Union)body).getPlainSelects();
+			for (PlainSelect selectItem : selectItems) {
+				executeSelectWithAlias((SelectBody)selectItem, queryOrder, alias);
+			}
+		}
+	}
+	
 	//it returns the top iterator after executing the selectbody
 	private void executeSelect(SelectBody body, int queryOrder){
 		if (body instanceof PlainSelect){
 			executePlainSelect((PlainSelect)body, queryOrder);
+		} else if (body instanceof Union) {
+			List<PlainSelect> selectItems = ((Union)body).getPlainSelects();
+			for (PlainSelect selectItem : selectItems) {
+				executePlainSelect(selectItem, queryOrder);
+			}
 		}
 	}
 		
