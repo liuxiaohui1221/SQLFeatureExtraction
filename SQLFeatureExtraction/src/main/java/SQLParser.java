@@ -30,6 +30,7 @@ import net.sf.jsqlparser.statement.select.SubSelect;
 //import net.sf.jsqlparser.statement.select.Union;
 import net.sf.jsqlparser.statement.select.WithItem;
 import net.sf.jsqlparser.statement.update.Update;
+import toolsForMetrics.ColumnExpressionVisitor;
 import toolsForMetrics.ExtendedColumn;
 import toolsForMetrics.Global;
 import toolsForMetrics.Operation;
@@ -100,14 +101,14 @@ public class SQLParser{
 	HashSet<Column> SUMColumns = new HashSet<Column>();
 	HashSet<Column> COUNTColumns = new HashSet<Column>();
 	boolean includeSelOpConst;
-	HashMap<Column,String> selPredOps;
-	HashMap<Column,String> selPredConstants;
+	HashMap<Column,ArrayList<String>> selPredOps;
+	HashMap<Column,ArrayList<String>> selPredConstants;
 	
-	public HashMap<Column,String> getSelPredConstants() {
+	public HashMap<Column,ArrayList<String>> getSelPredConstants() {
 		return this.selPredConstants;
 	}
 	
-	public HashMap<Column,String> getSelPredOps() {
+	public HashMap<Column,ArrayList<String>> getSelPredOps() {
 		return this.selPredOps;
 	}
 	
@@ -167,8 +168,8 @@ public class SQLParser{
 		this.originalSQL = originalSQL;
 		this.includeSelOpConst = includeSelOpConst;
 		if(this.includeSelOpConst) {
-			this.selPredOps = new HashMap<Column, String>();
-			this.selPredConstants = new HashMap<Column, String>();
+			this.selPredOps = new HashMap<Column, ArrayList<String>>();
+			this.selPredConstants = new HashMap<Column, ArrayList<String>>();
 		}
 	}
 	
@@ -197,7 +198,7 @@ public class SQLParser{
 		if (fromitem instanceof Table) {
 			Table t = (Table) fromitem;
 			// uppercase it
-			t.setName(t.getName().toUpperCase());
+			t.setName(t.getName().replace("`","").toUpperCase());
 			
 			// if there is any alias of this table,create a key to map to original table
 			if (t.getAlias() != null) {
@@ -226,7 +227,7 @@ public class SQLParser{
 		if (groupbyRef != null) {
 			// pop out the top iter
 			for (int i = 0; i < groupbyRef.size(); i++) {
-				SelectItemListParser.correct(groupbyRef.get(i), tables);
+				this.correct(groupbyRef.get(i), tables);
 				//breaking selection operators with AND
 				List<Expression> columns = Util.processSelect(groupbyRef.get(i));
 				for (int j = 0; j < columns.size(); j++) {
@@ -240,8 +241,24 @@ public class SQLParser{
 		}
 	}
 	
-	public void setSelPredOpConst(HashMap<Column,String> selPredOpConsts, Column selectionColumn, String OpConst) {
-		selPredOpConsts.put(selectionColumn, OpConst);
+	public Column searchForSelPredOpConstCol(Column selectionColumn, HashMap<Column,ArrayList<String>> selPredOpConsts) {
+		for(Column col : selPredOpConsts.keySet()) {
+			if(col.toString().equals(selectionColumn.toString())){
+				return col;
+			}
+		}
+		return null;
+	}
+	
+	public void setSelPredOpConst(HashMap<Column,ArrayList<String>> selPredOpConsts, Column selectionColumn, String OpConst) {
+		Column selCol = searchForSelPredOpConstCol(selectionColumn, selPredOpConsts);
+		if(selCol == null) {
+			selCol = selectionColumn;
+			selPredOpConsts.put(selCol, new ArrayList<String>());
+		}
+		ArrayList<String> opConstList = selPredOpConsts.get(selCol);
+		opConstList.add(OpConst);
+		selPredOpConsts.put(selCol, opConstList);
 		return;
 	}
 	
@@ -340,12 +357,57 @@ public class SQLParser{
 		}
 	}
 	
+	public List<Expression> processSelectWithConstants(Expression e) 
+	{
+		List<Expression> retVal = new ArrayList<Expression>();
+
+		if (e instanceof Parenthesis) {
+			retVal.addAll(processSelectWithConstants(Util.deleteParanthesis(e)));
+		} /*else if (e instanceof ExistsExpression) {
+			retVal.addAll(processSelectWithConstants(((ExistsExpression) e).getRightExpression()));
+		}*/ else if (e instanceof BinaryExpression){
+			BinaryExpression a = (BinaryExpression)e;
+			Expression leftExp = a.getLeftExpression();
+			Expression rightExp = a.getRightExpression();
+			if (leftExp instanceof Column && Util.isColValInstance(rightExp)) {
+				retVal.add(e);
+			}
+			else {
+				retVal.addAll(processSelectWithConstants(a.getLeftExpression()));
+				retVal.addAll(processSelectWithConstants(a.getRightExpression()));
+			}
+		} 
+		/*
+		else if (e instanceof SubSelect) {
+			ColumnExpressionVisitor visitor = new ColumnExpressionVisitor(); 
+	        e.accept(visitor); 
+	        
+	        retVal.addAll(visitor.getColumns());
+		} else if (e instanceof InExpression) {
+			InExpression a = (InExpression)e;
+			retVal.addAll(processSelectWithConstants(a.getLeftExpression()));
+			
+			ItemsList it = a.getItemsList();
+			if (it != null) {
+				ColumnExpressionVisitor visitor = new ColumnExpressionVisitor();
+				it.accept(visitor);
+				retVal.addAll(visitor.getColumns());
+			}
+		} */
+		else {
+			retVal.add(e);
+		}
+		
+		return retVal;
+	}
+	
+	
 	private void parseWhereOpsWithConstants(Expression where) {
 		if (where != null) {
 			// pop out the top iter
-			SelectItemListParser.correct(where, tables);
+			this.correct(where, tables);
 			//breaking selection operators with AND
-			List<Expression> whereExps = Util.processSelectWithConstants(where);
+			List<Expression> whereExps = this.processSelectWithConstants(where);
 			// for instance, table.col1=table2.col2 will produce a column and a column, whereas table.col1=constant will produce a column and a constant
 			parseSelJoinPredsWithConstants(whereExps);			
 		}
@@ -361,7 +423,7 @@ public class SQLParser{
 	private void parseWhereOps(Expression where) {
 		if (where != null) {
 			// pop out the top iter
-			SelectItemListParser.correct(where, tables);
+			this.correct(where, tables);
 			//breaking selection operators with AND
 			List<Expression> selects = Util.processSelect(where);
 			assert selects.size()%2==0; // number of selects should be even because every where predicate is a binary expression
@@ -415,7 +477,7 @@ public class SQLParser{
 			//System.out.println(sss);
 			if (sss != null) {
 				// pop out the top iter
-				SelectItemListParser.correct(sss, tables);
+				this.correct(sss, tables);
 				//breaking selection operators with AND
 				List<Expression> joins = Util.processSelect(sss);
 				ArrayList<Column> joinPredicate = null;
@@ -486,7 +548,7 @@ public class SQLParser{
 			//System.out.println(sss);
 			if (sss != null) {
 				// pop out the top iter
-				SelectItemListParser.correct(sss, tables);
+				this.correct(sss, tables);
 				//breaking selection operators with AND
 				List<Expression> joins = Util.processSelectWithConstants(sss);
 				parseSelJoinPredsWithConstants(joins);
@@ -511,6 +573,137 @@ public class SQLParser{
 			}
 			parseUsingColumns(joinlist, i);		
 		}
+	}
+	
+	//find all columns with no table name or aliased table name,make them toUppercase
+	public void correct(Expression exp, List<Table> tables){
+		if (exp instanceof Function){
+			Function f=(Function)exp;
+			f.setName(f.getName().toUpperCase());
+			if (!f.isAllColumns())
+			{
+				ExpressionList explist= f.getParameters();
+				if (explist != null) {
+					List<Expression> list=explist.getExpressions();
+					for (int i=0;i<list.size();i++)
+						correct(list.get(i), tables);
+				}
+			}
+		}
+
+		else if (exp instanceof Column){
+			Column c=(Column) exp;
+			if (c.getTable()==null||c.getTable().getName()==null){				  					
+				Column v=Global.getColumnFullName(c,tables);
+				c.setTable(v.getTable());
+				c.setColumnName(v.getColumnName());
+			}
+			else{				  
+				String tablename = c.getTable().getName();
+				Table t = new Table();
+				t.setName(tablename.toUpperCase());
+				c.setTable(t);
+			}
+		}
+		//for any other expression with more than one elements
+		else if (exp instanceof BinaryExpression){
+			BinaryExpression bexp=(BinaryExpression) exp;
+			Expression l=bexp.getLeftExpression();
+			Expression r=bexp.getRightExpression();
+			correct(l,tables);
+			correct(r,tables);
+		}
+		else if (exp instanceof Parenthesis) {
+			Parenthesis p=(Parenthesis) exp;
+			Expression exp1=p.getExpression();
+			correct(exp1,tables);
+		}
+		else if (exp instanceof CaseExpression){
+			CaseExpression c=(CaseExpression) exp;
+			List<WhenClause> e=c.getWhenClauses();
+			for (int i=0;i<e.size();i++){
+				WhenClause clause=e.get(i);
+				correct(clause.getThenExpression(),tables);
+				correct(clause.getWhenExpression(),tables);
+			}
+		}
+		else if(exp instanceof InExpression) {
+			InExpression e = (InExpression) exp;
+			parseInExpression(e);
+		}
+		else if(exp instanceof ExistsExpression) {
+			ExistsExpression e = (ExistsExpression) exp;
+			correct(e.getRightExpression(), tables);
+		}
+		else if (exp instanceof SubSelect){
+			//subselects.add((SubSelect)exp);
+			SubSelect e = (SubSelect) exp;
+			PlainSelect sel = (PlainSelect)(e.getSelectBody());
+			SelectBody selectItem = e.getSelectBody();
+			this.executeSelect(selectItem, 1);
+			//correct(sel.getWhere(), tables);
+		}
+		else {
+			//do sth
+		}
+	}
+	
+	public List<Expression> parseInAsJoinExp(InExpression e, List<Expression> whereExps) {
+		BinaryExpression joinExp;
+		if(e.isNot())
+			joinExp = new NotEqualsTo();
+		else
+			joinExp = new EqualsTo();
+		joinExp.setLeftExpression(e.getLeftExpression());
+		SubSelect subExp = (SubSelect)e.getItemsList();
+		PlainSelect subSelExp = (PlainSelect)subExp.getSelectBody();
+		SelectExpressionItem subSelProjColItem = (SelectExpressionItem)subSelExp.getSelectItems().get(0);
+		Expression subSelProjCol = subSelProjColItem.getExpression();
+		if(subSelProjColItem.getAlias()==null) {
+			// find the table
+			Table subSelTable = (Table)subSelExp.getFromItem();
+			String tabName = subSelTable.getName();
+			subSelTable.setName(tabName.toLowerCase());
+			Column c = (Column)subSelProjCol;
+			if(c.getTable().getName()==null || c.getTable().getAlias()==null)
+				c.setTable(subSelTable);
+		}
+		if (subSelProjCol != null) {
+			joinExp.setRightExpression(subSelProjCol);
+		}
+		whereExps.add(joinExp);
+		return whereExps;
+	}
+	
+	public List<Expression> parseInAsSelExp(InExpression e, List<Expression> whereExps) {
+		Expression leftExp = e.getLeftExpression();
+		ItemsList it = e.getItemsList();
+		String[] constList = it.toString().split(",");
+		for(String constStr : constList) {
+			BinaryExpression selExp;
+			if(e.isNot())
+				selExp = new NotEqualsTo();
+			else
+				selExp = new EqualsTo();
+			selExp.setLeftExpression(leftExp);
+			StringValue val = new StringValue(constStr);
+			selExp.setRightExpression(val);
+			whereExps.add(selExp);
+		}
+		return whereExps;
+	}
+	
+	public void parseInExpression(InExpression e) {
+		List<Expression> whereExps = new ArrayList<Expression>();
+		correct(e.getLeftExpression(), tables);
+		if(!(e.getItemsList() instanceof ExpressionList)) {
+			correct((Expression)e.getItemsList(), tables);
+			whereExps = parseInAsJoinExp(e, whereExps);
+		} else {
+			whereExps = parseInAsSelExp(e, whereExps);
+			InExpression a = (InExpression)e;
+		}
+		parseSelJoinPredsWithConstants(whereExps);
 	}
 	
 	/**
@@ -649,7 +842,7 @@ public class SQLParser{
 			// pop out the top iter
 			for (int i = 0; i < orderbyRef.size(); i++) {
 				OrderByElement elem = orderbyRef.get(i);
-				SelectItemListParser.correct(orderbyRef.get(i).getExpression(), tables);
+				this.correct(orderbyRef.get(i).getExpression(), tables);
 				//breaking selection operators with AND
 				List<Expression> columns = Util.processSelect(orderbyRef.get(i).getExpression());
 				for (int j = 0; j < columns.size(); j++) {
@@ -666,7 +859,7 @@ public class SQLParser{
 		Expression having = s.getHaving();
 		if (having != null) {
 			// pop out the top iter
-			SelectItemListParser.correct(having, tables);
+			this.correct(having, tables);
 			//breaking selection operators with AND
 			List<Expression> havings = Util.processSelect(having);
 

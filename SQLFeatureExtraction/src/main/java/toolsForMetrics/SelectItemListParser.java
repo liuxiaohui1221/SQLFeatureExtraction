@@ -11,6 +11,7 @@ import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Function;
 import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.WhenClause;
+import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
 import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
@@ -18,6 +19,7 @@ import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.AllColumns;
 import net.sf.jsqlparser.statement.select.AllTableColumns;
+import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.SelectExpressionItem;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubSelect;
@@ -261,8 +263,15 @@ public class SelectItemListParser {
 				correct(clause.getWhenExpression(),tables);
 			}
 		}
+		else if(exp instanceof ExistsExpression) {
+			ExistsExpression e = (ExistsExpression) exp;
+			correct(e.getRightExpression(), tables);
+		}
 		else if (exp instanceof SubSelect){
 			//subselects.add((SubSelect)exp);
+			SubSelect e = (SubSelect) exp;
+			PlainSelect sel = (PlainSelect)(e.getSelectBody());
+			correct(sel.getWhere(), tables);
 		}
 		else {
 			//do sth

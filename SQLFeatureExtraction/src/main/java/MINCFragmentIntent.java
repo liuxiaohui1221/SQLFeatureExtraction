@@ -107,8 +107,8 @@ public class MINCFragmentIntent{
 	HashSet<Column> AVGColumns = new HashSet<Column>();
 	HashSet<Column> SUMColumns = new HashSet<Column>();
 	HashSet<Column> COUNTColumns = new HashSet<Column>();
-	HashMap<Column,String> selPredOps;
-	HashMap<Column,String> selPredConstants;
+	HashMap<Column,ArrayList<String>> selPredOps;
+	HashMap<Column,ArrayList<String>> selPredConstants;
 	String queryTypeBitMap;
 	String tableBitMap;
 	String groupByBitMap;
@@ -388,6 +388,14 @@ public class MINCFragmentIntent{
 		return null;
 	}
 	
+	public boolean searchForTableName(String tableName) throws Exception {
+		for(Table t : this.tables) {
+			if(t.getName().toLowerCase().equals(tableName))
+				return true;
+		}
+		return false;
+	}
+	
 	
 	public HashMap<String,ArrayList<String>> createTableColumnDict(HashSet<Column> colSet) throws Exception{
 		HashMap<String,ArrayList<String>> tableColumnDict = new HashMap<String,ArrayList<String>>();
@@ -401,8 +409,9 @@ public class MINCFragmentIntent{
 				String tableNameAlias = tokens[0].toLowerCase();
 				colName = tokens[1].toLowerCase();
 				tableName = tableNameAlias; // if there is no tableAlias tableName is being used
+				boolean tableExists = searchForTableName(tableName);
 				//final static HashMap<String, String> globalTableAlias = Global.tableAlias;
-				if (Global.tableAlias.size()>0) 
+				if (!tableExists && Global.tableAlias.size()>0) 
 					tableName = Global.tableAlias.get(tableNameAlias).toLowerCase();	
 			}
 			else {
@@ -514,7 +523,8 @@ public class MINCFragmentIntent{
 					String tableNameAlias = fullName.split("\\.")[0].toLowerCase();
 					colName = fullName.split("\\.")[1].toLowerCase();
 					tableName = tableNameAlias; // if there is no tableAlias tableName is being used
-					if (Global.tableAlias.size()>0) 
+					boolean tableExists = searchForTableName(tableName);
+					if (!tableExists && Global.tableAlias.size()>0) 
 						tableName = Global.tableAlias.get(tableNameAlias).toLowerCase();	
 				}
 				else {
@@ -599,7 +609,8 @@ public class MINCFragmentIntent{
 					String tableNameAlias = fullName.split("\\.")[0].toLowerCase();
 					colName = fullName.split("\\.")[1].toLowerCase();
 					tableName = tableNameAlias; // if there is no tableAlias tableName is being used
-					if (Global.tableAlias.size()>0) 
+					boolean tableExists = searchForTableName(tableName);
+					if (!tableExists && Global.tableAlias.size()>0) 
 						tableName = Global.tableAlias.get(tableNameAlias).toLowerCase();	
 				}
 				else {
@@ -696,7 +707,8 @@ public class MINCFragmentIntent{
 			String tableNameAlias = tokens[0].toLowerCase();
 			colName = tokens[1].toLowerCase();
 			tableName = tableNameAlias; // if there is no tableAlias tableName is being used
-			if (Global.tableAlias.size()>0) 
+			boolean tableExists = searchForTableName(tableName);
+			if (!tableExists && Global.tableAlias.size()>0) 
 				tableName = Global.tableAlias.get(tableNameAlias).toLowerCase();	
 		}
 		else {
@@ -843,10 +855,12 @@ public class MINCFragmentIntent{
 		BitSet bitVector = new BitSet(selColRangeBitMapSize); // col range bit count
 		int bitPosToSet;
 		for(Column c : this.selPredConstants.keySet()) {
-			String constVal = this.selPredConstants.get(c);
+			ArrayList<String> constValList = this.selPredConstants.get(c);
 			String selColFullName = retrieveFullColumnName(c);
-			bitPosToSet = findSelColRangeBinToSet(selColFullName, constVal);
-			bitVector.set(bitPosToSet);
+			for(String constVal : constValList) {
+				bitPosToSet = findSelColRangeBinToSet(selColFullName, constVal);
+				bitVector.set(bitPosToSet);
+			}
 		}
 		b = toString(bitVector, selColRangeBitMapSize);
 		this.appendToBitVectorString(b);
@@ -869,12 +883,14 @@ public class MINCFragmentIntent{
 		int selBitMapSize = selPredCols.size() * this.selPredOpList.length;
 		BitSet bitVector = new BitSet(selBitMapSize);
 		for(Column c : this.selPredOps.keySet()) {
-			String opVal = this.selPredOps.get(c);
+			ArrayList<String> opValList = this.selPredOps.get(c);
 			String selColFullName = retrieveFullColumnName(c);
 			int baseIndex = selPredCols.get(selColFullName) * this.selPredOpList.length;
-			int offset = Arrays.asList(this.selPredOpList).indexOf(opVal);
-			int bitPosToSet = baseIndex + offset;
-			bitVector.set(bitPosToSet);
+			for(String opVal : opValList) {
+				int offset = Arrays.asList(this.selPredOpList).indexOf(opVal);
+				int bitPosToSet = baseIndex + offset;
+				bitVector.set(bitPosToSet);
+			}
 		}
 		b = toString(bitVector, selBitMapSize);
 		this.appendToBitVectorString(b);
@@ -918,12 +934,12 @@ public class MINCFragmentIntent{
 	}
 	
 	public boolean parseQueryAndCreateFragmentVectors() throws Exception {
-		if(this.queryType == "select" || this.queryType == "update" || this.queryType == "insert" || this.queryType == "delete") {
+		if(this.queryType.equals("select") || this.queryType.equals("update") || this.queryType.equals("insert") || this.queryType.equals("delete")) {
 			try {
 				this.parseQuery();
 				this.createFragmentVectors();
 			} catch(Exception e) {
-				//e.printStackTrace();
+				e.printStackTrace();
 				return false;
 			}
 			return true;
@@ -1185,7 +1201,7 @@ public class MINCFragmentIntent{
 			int queryID = 0;
 			
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
-			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
+			//readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			
 			String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
 					+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
@@ -1206,8 +1222,10 @@ public class MINCFragmentIntent{
 			//query = "SELECT id, title, module, position, content, showtitle, control, params FROM jos_modules AS m LEFT JOIN jos_modules_menu AS mm ON mm.moduleid = m.id WHERE m.published = 1 AND m.access <= 0 AND m.client_id = 0 AND ( mm.menuid = 53 OR mm.menuid = 0 ) ORDER BY position, ordering";
 			//query = "SELECT a.`userid` as _userid , a.`status` as _status , a.`level` as _level , a.`points` as _points, a.`posted_on` as _posted_on, a.`avatar` as _avatar , a.`thumb` as _thumb , a.`invite` as _invite, a.`params` as _cparams, a.`view` as _view, a.`friendcount` as _friendcount, a.`alias` as _alias, s.`userid` as _isonline, u.* FROM jos_community_users as a LEFT JOIN jos_users u ON u.`id`=a.`userid` LEFT OUTER JOIN jos_session s ON s.`userid`=a.`userid` AND s.client_id !='1'WHERE a.`userid`='0'";
 			//query = "SELECT * from jos_community_fields_values where value = 'MINC'";
-			query = "SELECT count(*)  FROM jos_community_connection as a, jos_users as b WHERE a.`connect_from`='3637' AND a.`status`=1  AND a.`connect_to`=b.`id`  AND NOT EXISTS ( SELECT d.`blocked_userid` FROM `jos_community_blocklist` AS d WHERE d.`userid` = '3637' AND d.`blocked_userid` = a.`connect_to`)  ORDER BY a.`connection_id` DESC";
-			query = "SELECT COUNT(*) FROM `jos_community_groups_members` AS a INNER JOIN `jos_users` AS b WHERE b.id=a.memberid AND a.memberid NOT IN (SELECT userid from jos_community_courses_ta where courseid = 3569) AND a.groupid='3569' AND a.permissions='1'";
+			//query = "SELECT count(*)  FROM jos_community_connection as a, jos_users as b WHERE a.`connect_from`='3637' AND a.`status`=1  AND a.`connect_to`=b.`id` AND NOT EXISTS ( SELECT d.`blocked_userid` FROM `jos_community_blocklist` AS d WHERE d.`userid` = '3637' AND d.`blocked_userid` = a.`connect_to`)  ORDER BY a.`connection_id` DESC";
+			//query = "SELECT COUNT(*) FROM `jos_community_groups_members` AS a INNER JOIN `jos_users` AS b WHERE b.id=a.memberid AND a.memberid NOT IN (SELECT userid from jos_community_courses_ta where courseid = 3569) AND a.groupid='3569' AND a.permissions='1'";
+			//query = "SELECT DISTINCT a.* FROM jos_community_apps AS a WHERE a.`userid`='72' AND a.`apps`!=\"news_feed\" AND a.`apps`!=\"profile\" AND a.`apps`!=\"friends\" AND a.`apps` IN ('walls') ORDER BY a.`ordering`";
+			//query = "SELECT          a.`userid` as _userid ,         a.`status` as _status ,         a.`level`  as _level ,  a.`points`      as _points,     a.`posted_on` as _posted_on,    a.`avatar`      as _avatar ,    a.`thumb`       as _thumb ,     a.`invite`      as _invite,     a.`params`      as _cparams,    a.`view`        as _view,  a.`alias`    as _alias,  a.`friendcount` as _friendcount, s.`userid` as _isonline, u.*  FROM jos_community_users as a  LEFT JOIN jos_users u  ON u.`id`=a.`userid`  LEFT OUTER JOIN jos_session s  ON s.`userid`=a.`userid` WHERE a.`userid` IN (2839,2824,2828)";
 			MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
 			boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 			if(validQuery) {
