@@ -87,7 +87,9 @@ import net.sf.jsqlparser.statement.select.Union;
 public class SQLParser{
 	String originalSQL;
 	String rewrittenSQL;
+	SchemaParser schParse; // used for retrieval of schema related information
 	List<Table> tables = new ArrayList<Table>();
+	List<Table> curLevelTables = new ArrayList<Table>();
 	HashSet<Column> groupByColumns = new HashSet<Column>();
 	HashSet<Column> selectionColumns = new HashSet<Column>();
 	HashSet<Column> havingColumns = new HashSet<Column>();
@@ -164,7 +166,8 @@ public class SQLParser{
 		return this.COUNTColumns;
 	}
 	
-	public SQLParser(String originalSQL, boolean includeSelOpConst) {
+	public SQLParser(SchemaParser schParse, String originalSQL, boolean includeSelOpConst) {
+		this.schParse = schParse;
 		this.originalSQL = originalSQL;
 		this.includeSelOpConst = includeSelOpConst;
 		if(this.includeSelOpConst) {
@@ -216,6 +219,7 @@ public class SQLParser{
 			}
 
 			tables.add(t);
+			this.curLevelTables.add(t);
 		} else if (fromitem instanceof SubSelect){
 			SubSelect temp = (SubSelect) fromitem;
 			
@@ -706,6 +710,39 @@ public class SQLParser{
 		parseSelJoinPredsWithConstants(whereExps);
 	}
 	
+	public void addToColSet(Schema selectSchema, HashSet<Column> targetColumns) {
+		for (int j = 0; j < selectSchema.getValues().size(); j++) {
+			Column aggrCol = new ExtendedColumn(selectSchema.getValues().get(j));
+			//aggrColumns.add(aggrCol);
+			if(aggrCol.getTable().getAlias()==null || aggrCol.getTable().getName()==null) {
+				for(Table t : this.curLevelTables) {
+					if(this.schParse.fetchMINCColumns().get(t.getName().toLowerCase().replace("`", "")).contains(aggrCol.getColumnName().toLowerCase().replace("`", ""))) {
+						//t.setName(t.getName().toLowerCase());
+						//aggrCol.setTable(t);
+						//targetColumns.add(aggrCol);
+						targetColumns.add(new ExtendedColumn(t.getName().toLowerCase().replace("`", "")+"."+aggrCol.getColumnName().toLowerCase().replace("`", "")));
+					}
+				}
+			}
+		}
+		return;
+	}
+	
+	
+	public void addColumnToAggrProj(Expression sss, HashSet<Column> aggrColumns, Schema selectSchema) {
+		if (((Function) sss).isAllColumns()) {
+			for(Table t : this.curLevelTables) {
+				aggrColumns.add(new ExtendedColumn(t.getName().toLowerCase()+".*"));
+				projectionColumns.add(new ExtendedColumn(t.getName().toLowerCase()+".*"));
+			}
+		} else {
+			addToColSet(selectSchema, aggrColumns);
+		}
+		return;
+	}
+	
+	
+	
 	/**
 	 *  specifies how to execute Select,major part
 	 * @param s
@@ -721,10 +758,10 @@ public class SQLParser{
 		// 1.first check things from the FROM CLAUSE
 
 		FromItem fromitem = s.getFromItem();
-		
+		this.curLevelTables.clear();
+
 		if (fromitem != null) {
 			List<Join> joinlist = s.getJoins();
-
 			if (joinlist == null || joinlist.isEmpty()) {
 				//consumeFromItem(fromitem, tables, schemas);
 				consumeFromItem(fromitem, tables, queryOrder);
@@ -736,12 +773,11 @@ public class SQLParser{
 				parseJoinList(joinlist, queryOrder);
 				//Collections.sort(this.scanList);
 			}
-
+			
 		} else
 			System.err.println("no from item found,please check");
 		
 		List<SelectItem> selectItems = s.getSelectItems();
-		
 //		SelectItemListParser parser = new SelectItemListParser(selectItems, tables);
 
 		if (selectItems != null) {
@@ -761,55 +797,18 @@ public class SQLParser{
 					if (sss instanceof Function){
 						Function f=(Function)sss;  		
 						String fName=f.getName();
-						if (fName.equals("max")){
-							if (((Function) sss).isAllColumns()) {
-								MAXColumns.add(new ExtendedColumn("*"));
-								projectionColumns.add(new ExtendedColumn("*"));
-							}
-							for (int j = 0; j < selectSchema.getValues().size(); j++) {
-								MAXColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
-							}
-						}
-						else if(fName.equals("min")){
-							if (((Function) sss).isAllColumns()) {
-								MINColumns.add(new ExtendedColumn("*"));
-								projectionColumns.add(new ExtendedColumn("*"));
-							}
-							for (int j = 0; j < selectSchema.getValues().size(); j++) {
-								MINColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
-							}
-						}
-						else if (fName.equals("sum")){
-							if (((Function) sss).isAllColumns()) {
-								SUMColumns.add(new ExtendedColumn("*"));
-								projectionColumns.add(new ExtendedColumn("*"));
-							}
-							for (int j = 0; j < selectSchema.getValues().size(); j++) {
-								SUMColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
-							}
-						}
-						else if (fName.equals("avg")){
-							if (((Function) sss).isAllColumns()) {
-								AVGColumns.add(new ExtendedColumn("*"));
-								projectionColumns.add(new ExtendedColumn("*"));
-							}
-							for (int j = 0; j < selectSchema.getValues().size(); j++) {
-								AVGColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
-							}
-						}
-						else if (fName.equals("count")){
-							if (((Function) sss).isAllColumns()) {
-								COUNTColumns.add(new ExtendedColumn("*"));
-								projectionColumns.add(new ExtendedColumn("*"));
-							}
-							for (int j = 0; j < selectSchema.getValues().size(); j++) {
-								COUNTColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
-							}
-						}
+						if (fName.equals("max"))
+							addColumnToAggrProj(sss, MAXColumns, selectSchema);
+						else if(fName.equals("min"))
+							addColumnToAggrProj(sss, MINColumns, selectSchema);
+						else if (fName.equals("sum"))
+							addColumnToAggrProj(sss, SUMColumns, selectSchema);
+						else if (fName.equals("avg"))
+							addColumnToAggrProj(sss, AVGColumns, selectSchema);
+						else if (fName.equals("count"))
+							addColumnToAggrProj(sss, COUNTColumns, selectSchema);
 					}
-					for (int j = 0; j < selectSchema.getValues().size(); j++) {
-						projectionColumns.add(new ExtendedColumn(selectSchema.getValues().get(j)));
-					} //both non-aggregate & aggregate columns are also added to the projection list
+					addToColSet(selectSchema, this.projectionColumns); //both non-aggregate & aggregate columns are also added to the projection list
 				}
 				else if (ss instanceof SubSelect) {
 					SubSelect temp = (SubSelect) ss;
@@ -817,7 +816,9 @@ public class SQLParser{
 					executeSelect(temp.getSelectBody(), queryOrder);
 				}
 				else if (ss instanceof AllColumns){
-					projectionColumns.add(new ExtendedColumn("*"));
+					for(Table t : this.curLevelTables) {
+						projectionColumns.add(new ExtendedColumn(t.getName().toLowerCase()+".*"));
+					}
 				}
 				else if (ss instanceof AllTableColumns) {
 					projectionColumns.add(new ExtendedColumn(ss.toString()));
