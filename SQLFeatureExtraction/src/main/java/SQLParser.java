@@ -4,6 +4,7 @@ import java.io.FileReader;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -102,9 +103,14 @@ public class SQLParser{
 	HashSet<Column> AVGColumns = new HashSet<Column>();
 	HashSet<Column> SUMColumns = new HashSet<Column>();
 	HashSet<Column> COUNTColumns = new HashSet<Column>();
+	HashMap<String, Column> colAliases = new HashMap<String, Column>();
 	boolean includeSelOpConst;
 	HashMap<Column,ArrayList<String>> selPredOps;
 	HashMap<Column,ArrayList<String>> selPredConstants;
+	
+	public HashMap<String, Column> getColAliases() {
+		return this.colAliases;
+	}
 	
 	public HashMap<Column,ArrayList<String>> getSelPredConstants() {
 		return this.selPredConstants;
@@ -665,12 +671,15 @@ public class SQLParser{
 		Expression subSelProjCol = subSelProjColItem.getExpression();
 		if(subSelProjColItem.getAlias()==null) {
 			// find the table
-			Table subSelTable = (Table)subSelExp.getFromItem();
-			String tabName = subSelTable.getName();
-			subSelTable.setName(tabName.toLowerCase());
-			Column c = (Column)subSelProjCol;
-			if(c.getTable().getName()==null || c.getTable().getAlias()==null)
-				c.setTable(subSelTable);
+			FromItem fromitem = subSelExp.getFromItem();
+			if (fromitem instanceof Table) {
+				Table subSelTable = (Table) fromitem;
+				String tabName = subSelTable.getName();
+				subSelTable.setName(tabName.replace("`","").toLowerCase());
+				Column c = (Column)subSelProjCol;
+				if(c.getTable().getName()==null || c.getTable().getAlias()==null)
+					c.setTable(subSelTable);
+			}
 		}
 		if (subSelProjCol != null) {
 			joinExp.setRightExpression(subSelProjCol);
@@ -710,33 +719,54 @@ public class SQLParser{
 		parseSelJoinPredsWithConstants(whereExps);
 	}
 	
-	public void addToColSet(Schema selectSchema, HashSet<Column> targetColumns) {
+	public void addToColSet(Schema selectSchema, String colAlias, HashSet<Column> targetColumns) {
 		for (int j = 0; j < selectSchema.getValues().size(); j++) {
 			Column aggrCol = new ExtendedColumn(selectSchema.getValues().get(j));
 			//aggrColumns.add(aggrCol);
-			if(aggrCol.getTable().getAlias()==null || aggrCol.getTable().getName()==null) {
+			if(aggrCol.getTable().getAlias()==null && aggrCol.getTable().getName()==null) {
 				for(Table t : this.curLevelTables) {
-					if(this.schParse.fetchMINCColumns().get(t.getName().toLowerCase().replace("`", "")).contains(aggrCol.getColumnName().toLowerCase().replace("`", ""))) {
+					HashMap<String,String> schTabCols = this.schParse.fetchMINCColumns();
+					String candTabName = t.getName().toLowerCase().replace("`", "");
+					String candColName = aggrCol.getColumnName().toLowerCase().replace("`", "");
+					String candColArrayStr = schTabCols.get(candTabName);
+					List<String> candColList = null;
+					try {
+						String[] candColArr = MINCFragmentIntent.cleanColArrayString(candColArrayStr);
+						candColList = Arrays.asList(candColArr);
+					} catch (Exception e) {
+						// TODO Auto-generated catch block
+						//e.printStackTrace();
+						return;
+					}
+					if(candColList.contains(candColName)) {
 						//t.setName(t.getName().toLowerCase());
 						//aggrCol.setTable(t);
 						//targetColumns.add(aggrCol);
-						targetColumns.add(new ExtendedColumn(t.getName().toLowerCase().replace("`", "")+"."+aggrCol.getColumnName().toLowerCase().replace("`", "")));
+						Column extendedCol = new ExtendedColumn(t.getName().toLowerCase().replace("`", "")+"."+aggrCol.getColumnName().toLowerCase().replace("`", ""));
+						targetColumns.add(extendedCol);
+						if(colAlias !=null)
+							this.colAliases.put(t.getName().toLowerCase()+"."+colAlias, extendedCol);
 					}
 				}
+			} else {
+				targetColumns.add(aggrCol);
 			}
 		}
 		return;
 	}
 	
 	
-	public void addColumnToAggrProj(Expression sss, HashSet<Column> aggrColumns, Schema selectSchema) {
+	public void addColumnToAggrProj(Expression sss, HashSet<Column> aggrColumns, Schema selectSchema, String colAlias) {
 		if (((Function) sss).isAllColumns()) {
 			for(Table t : this.curLevelTables) {
-				aggrColumns.add(new ExtendedColumn(t.getName().toLowerCase()+".*"));
-				projectionColumns.add(new ExtendedColumn(t.getName().toLowerCase()+".*"));
+				Column extendedCol = new ExtendedColumn(t.getName().toLowerCase().replace("`", "")+".*");
+				aggrColumns.add(extendedCol);
+				projectionColumns.add(extendedCol);
+				if(colAlias !=null)
+					this.colAliases.put(t.getName().toLowerCase().replace("`", "")+"."+colAlias, extendedCol);
 			}
 		} else {
-			addToColSet(selectSchema, aggrColumns);
+			addToColSet(selectSchema, colAlias, aggrColumns);
 		}
 		return;
 	}
@@ -788,6 +818,7 @@ public class SQLParser{
 				if (ss instanceof SelectExpressionItem) {
 					Expression sss = ((SelectExpressionItem) ss)
 							.getExpression();
+					String colAlias = ((SelectExpressionItem) ss).getAlias();
 					if (sss instanceof SubSelect) {
 						SubSelect temp = (SubSelect) sss;
 						
@@ -798,17 +829,17 @@ public class SQLParser{
 						Function f=(Function)sss;  		
 						String fName=f.getName();
 						if (fName.equals("max"))
-							addColumnToAggrProj(sss, MAXColumns, selectSchema);
+							addColumnToAggrProj(sss, MAXColumns, selectSchema, colAlias);
 						else if(fName.equals("min"))
-							addColumnToAggrProj(sss, MINColumns, selectSchema);
+							addColumnToAggrProj(sss, MINColumns, selectSchema, colAlias);
 						else if (fName.equals("sum"))
-							addColumnToAggrProj(sss, SUMColumns, selectSchema);
+							addColumnToAggrProj(sss, SUMColumns, selectSchema, colAlias);
 						else if (fName.equals("avg"))
-							addColumnToAggrProj(sss, AVGColumns, selectSchema);
+							addColumnToAggrProj(sss, AVGColumns, selectSchema, colAlias);
 						else if (fName.equals("count"))
-							addColumnToAggrProj(sss, COUNTColumns, selectSchema);
+							addColumnToAggrProj(sss, COUNTColumns, selectSchema, colAlias);
 					}
-					addToColSet(selectSchema, this.projectionColumns); //both non-aggregate & aggregate columns are also added to the projection list
+					addToColSet(selectSchema, colAlias, this.projectionColumns); //both non-aggregate & aggregate columns are also added to the projection list
 				}
 				else if (ss instanceof SubSelect) {
 					SubSelect temp = (SubSelect) ss;
@@ -816,12 +847,20 @@ public class SQLParser{
 					executeSelect(temp.getSelectBody(), queryOrder);
 				}
 				else if (ss instanceof AllColumns){
+					//String colAlias = ((SelectExpressionItem) ss).getAlias();
 					for(Table t : this.curLevelTables) {
-						projectionColumns.add(new ExtendedColumn(t.getName().toLowerCase()+".*"));
+						Column extendedCol = new ExtendedColumn(t.getName().toLowerCase()+".*");
+						projectionColumns.add(extendedCol);
+						/*if(colAlias !=null)
+							this.colAliases.put(colAlias, extendedCol);*/
 					}
 				}
 				else if (ss instanceof AllTableColumns) {
-					projectionColumns.add(new ExtendedColumn(ss.toString()));
+					//String colAlias = ((SelectExpressionItem) ss).getAlias();
+					Column extendedCol = new ExtendedColumn(ss.toString());
+					projectionColumns.add(extendedCol);
+					/*if(colAlias !=null)
+						this.colAliases.put(colAlias, extendedCol);*/
 				}
 				else {
 					//System.out.println(ss);
