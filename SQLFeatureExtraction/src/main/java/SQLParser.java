@@ -659,12 +659,6 @@ public class SQLParser{
 	}
 	
 	public List<Expression> parseInAsJoinExp(InExpression e, List<Expression> whereExps) {
-		BinaryExpression joinExp;
-		if(e.isNot())
-			joinExp = new NotEqualsTo();
-		else
-			joinExp = new EqualsTo();
-		joinExp.setLeftExpression(e.getLeftExpression());
 		SubSelect subExp = (SubSelect)e.getItemsList();
 		PlainSelect subSelExp = (PlainSelect)subExp.getSelectBody();
 		SelectExpressionItem subSelProjColItem = (SelectExpressionItem)subSelExp.getSelectItems().get(0);
@@ -676,15 +670,21 @@ public class SQLParser{
 				Table subSelTable = (Table) fromitem;
 				String tabName = subSelTable.getName();
 				subSelTable.setName(tabName.replace("`","").toLowerCase());
+				BinaryExpression joinExp;
+				if(e.isNot())
+					joinExp = new NotEqualsTo();
+				else
+					joinExp = new EqualsTo();
+				joinExp.setLeftExpression(e.getLeftExpression());
 				Column c = (Column)subSelProjCol;
 				if(c.getTable().getName()==null || c.getTable().getAlias()==null)
 					c.setTable(subSelTable);
+				if (subSelProjCol != null) {
+					joinExp.setRightExpression(subSelProjCol);
+					whereExps.add(joinExp);
+				}
 			}
 		}
-		if (subSelProjCol != null) {
-			joinExp.setRightExpression(subSelProjCol);
-		}
-		whereExps.add(joinExp);
 		return whereExps;
 	}
 	
