@@ -94,6 +94,7 @@ public class MINCFragmentIntent{
 	String originalSQL;
 	Statement statement;
 	String intentBitVector;
+	StringBuilder intentBitVecBuilder;
 	List<Table> tables = new ArrayList<Table>();
 	HashMap<String, Column> colAliases = null;
 	HashSet<Column> groupByColumns = new HashSet<Column>();
@@ -140,6 +141,7 @@ public class MINCFragmentIntent{
 		CCJSqlParser parser = new CCJSqlParser(stream);
 		this.statement = null;
 		this.intentBitVector = null;
+		this.intentBitVecBuilder = new StringBuilder();
 		try {
 			this.statement = parser.Statement();
 			if (this.statement instanceof Select) 
@@ -282,9 +284,11 @@ public class MINCFragmentIntent{
 			System.out.println("Invalid queryType!!");
 		//	System.exit(0);
 		}
-		if(this.intentBitVector == null) {
-			this.intentBitVector = toString(b,4);
+		if(this.intentBitVecBuilder.length() == 0) {
 			this.queryTypeBitMap = toString(b,4);
+			this.intentBitVecBuilder.append(this.queryTypeBitMap);
+			//this.intentBitVector = toString(b,4);
+			
 		}
 		else{
 			System.out.println("Invalid intent bitvector!!");
@@ -293,12 +297,13 @@ public class MINCFragmentIntent{
 	}
 	
 	public void appendToBitVectorString(String b) throws Exception{
-		if(this.intentBitVector == null) {
+		if(this.intentBitVecBuilder.length()==0) {
 			System.out.println("Invalid intent bitvector!!");
 		//	System.exit(0);
 		}
 		else {
-			this.intentBitVector += b.toString();
+			this.intentBitVecBuilder.append(b);
+			//this.intentBitVector += b;
 		}
 	}
 	
@@ -311,7 +316,7 @@ public class MINCFragmentIntent{
 			b.set(tableIndex);
 		}
 		this.tableBitMap = toString(b,MINCTables.size());
-		appendToBitVectorString(toString(b,MINCTables.size()));
+		appendToBitVectorString(this.tableBitMap);
 	}
 	
 	public boolean checkIfTableExists(String tableName) throws Exception{
@@ -622,8 +627,9 @@ public class MINCFragmentIntent{
 				joinPredIntentVector.set(bitIndex);
 			}
 		}
-		this.appendToBitVectorString(toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount()));
-		this.joinPredicatesBitMap = toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount());
+		String b = toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount());
+		this.appendToBitVectorString(b);
+		this.joinPredicatesBitMap = b;
 	}
 	
 /*	public void createBitVectorForJoinDeprecated() throws Exception{
@@ -908,6 +914,7 @@ public class MINCFragmentIntent{
 			createBitVectorForSelPredOps();
 			createBitVectorForSelPredColRangeBins();
 		}
+		this.intentBitVector = this.intentBitVecBuilder.toString();
 	}
 	
 	public boolean parseQueryAndCreateFragmentVectors() throws Exception {
