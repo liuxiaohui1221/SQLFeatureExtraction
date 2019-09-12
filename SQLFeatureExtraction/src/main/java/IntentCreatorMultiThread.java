@@ -126,6 +126,7 @@ public class IntentCreatorMultiThread extends Thread{
 		String[] tokens = line.split(regex);
 		// format is "startTime","sessID","endTime","execute <unnamed>: Query","parameters: $1 = ..., $2 = ..."
 		String query = tokens[3].split(": ")[1];
+		query = query.replaceAll("^\"|\"$", ""); // remove starting and trailing double quotes
 		return query;
 	}
 	
@@ -356,7 +357,7 @@ public class IntentCreatorMultiThread extends Thread{
 			while(sessionID.equals(prevSessionID) && curQueryIndex <=upperQueryIndex) { // iterates over all queries in a session, terminates on new session
 				boolean condToHold;
 				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
-					condToHold = this.dataset.equals("BusTracker") || (this.dataset.equals("MINC") && !query.equals("SELECT VERSION()") && !query.equals("SELECT f.id"));
+					condToHold = (this.dataset.equals("BusTracker") && !query.toLowerCase().equals("select 1"))|| (this.dataset.equals("MINC") && !query.equals("SELECT VERSION()") && !query.equals("SELECT f.id"));
 					if(condToHold)
 						curSessQueries.add(query);
 				}
@@ -410,7 +411,7 @@ public class IntentCreatorMultiThread extends Thread{
 			while(sessionID.equals(prevSessionID) && curQueryIndex <=upperQueryIndex) { // iterates over all queries in a session, terminates on new session
 				boolean condToHold;
 				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
-					condToHold = this.dataset.equals("BusTracker") || (this.dataset.equals("MINC") && !query.equals("SELECT VERSION()") && !query.equals("SELECT f.id"));
+					condToHold = (this.dataset.equals("BusTracker") && !query.toLowerCase().equals("select 1")) || (this.dataset.equals("MINC") && !query.equals("SELECT VERSION()") && !query.equals("SELECT f.id"));
 					if(condToHold)
 						curSessQueries.add(query);
 				}

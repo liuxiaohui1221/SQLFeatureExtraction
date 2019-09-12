@@ -1100,6 +1100,7 @@ public class MINCFragmentIntent{
 			String[] tokens = line.split(regex);
 			// format is "startTime","sessID","endTime","execute <unnamed>: Query","parameters: $1 = ..., $2 = ..."
 			curSessID = tokens[1];
+			curSessID = curSessID.replaceAll("^\"|\"$", ""); // remove starting and trailing double quotes
 		}
 		return curSessID;
 	}
