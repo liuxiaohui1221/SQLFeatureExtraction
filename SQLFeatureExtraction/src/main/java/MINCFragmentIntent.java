@@ -923,7 +923,7 @@ public class MINCFragmentIntent{
 				this.parseQuery();
 				this.createFragmentVectors();
 			} catch(Exception e) {
-				//e.printStackTrace();
+				e.printStackTrace();
 				return false;
 			}
 			return true;
@@ -985,7 +985,7 @@ public class MINCFragmentIntent{
 		return queryID;
 	}
 	
-	public static ArrayList<String> countLinesPreProcessed(String rawSessFile, int startLineNum) throws Exception{
+	public static ArrayList<String> countMINCLinesPreProcessed(String rawSessFile, int startLineNum) throws Exception{
 		System.out.println("Counting lines from "+rawSessFile);
 		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
 		ArrayList<String> lines = new ArrayList<String>();
@@ -1006,7 +1006,7 @@ public class MINCFragmentIntent{
 		return lines;
 	}
 	
-	public static ArrayList<String> countLines(String rawSessFile, int startLineNum) throws Exception{
+	public static ArrayList<String> countMINCLines(String rawSessFile, int startLineNum) throws Exception{
 		System.out.println("Counting lines from "+rawSessFile);
 		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
 		ArrayList<String> lines = new ArrayList<String>();
@@ -1030,7 +1030,81 @@ public class MINCFragmentIntent{
 		return lines;
 	}
 	
-	public static ArrayList<Pair<Integer,Integer>> readLinesPerThread(int lowerIndexPerThread, int curThreadIndex, int numThreads, int numLinesPerThread, ArrayList<String> sessQueries, ArrayList<Pair<Integer,Integer>> inputSplits, String pruneKeepModifyRepeatedQueries) throws Exception{
+	public static ArrayList<String> countBusTrackerLinesPreProcessed(String rawSessFile, int startLineNum) throws Exception{
+		System.out.println("Counting lines from "+rawSessFile);
+		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
+		ArrayList<String> lines = new ArrayList<String>();
+		String line = null;
+		int i=0;
+		int absCount = 0;
+		while ((line=br.readLine())!=null /*  && absCount<3000000+startLineNum*/) {
+			if(absCount>=startLineNum) {
+				lines.add(line);
+				i++;
+				if (i%100000 == 0)
+					System.out.println("Read "+i+" lines so far and absCount: "+absCount);
+			}
+			absCount++;
+		}
+		System.out.println("Read "+i+" lines so far and done with absCount: "+absCount);
+		br.close();
+		return lines;
+	}
+	
+	public static ArrayList<String> countBusTrackerLines(String rawSessFile, int startLineNum) throws Exception{
+		System.out.println("Counting lines from "+rawSessFile);
+		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
+		ArrayList<String> lines = new ArrayList<String>();
+		String line = null;
+		int i=0;
+		int absCount = 0;
+		while ((line=br.readLine())!=null /*  && absCount<3000000+startLineNum*/) {
+			if(absCount>=startLineNum && line.contains("execute <unnamed>")) {
+				line = line.trim();
+				lines.add(line);
+				i++;
+				if (i%1000000 == 0)
+					System.out.println("Read "+i+" lines so far and absCount: "+absCount);
+			}
+			absCount++;
+		}
+		System.out.println("Read "+i+" lines so far and done with absCount: "+absCount);
+		br.close();
+		return lines;
+	}
+	
+	public static ArrayList<String> countLinesPreProcessed(String dataset, String rawSessFile, int startLineNum) throws Exception{
+		if(dataset.equals("MINC"))
+			return countMINCLinesPreProcessed(rawSessFile, startLineNum);
+		else if(dataset.equals("BusTracker"))
+			return countBusTrackerLinesPreProcessed(rawSessFile, startLineNum);
+		else
+			return null;
+	}
+	
+	public static ArrayList<String> countLines(String dataset, String rawSessFile, int startLineNum) throws Exception{
+		if(dataset.equals("MINC"))
+			return countMINCLines(rawSessFile, startLineNum);
+		else if(dataset.equals("BusTracker"))
+			return countBusTrackerLines(rawSessFile, startLineNum);
+		else
+			return null;
+	}
+	
+	public static String fetchSessID(String dataset, String line) throws Exception {
+		String curSessID = null;
+		if(dataset.equals("MINC")) {
+			curSessID = line.split(" ")[0];
+		} else if(dataset.equals("BusTracker")) {
+			String regex = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"; // to split on comma outside double quotes
+			String[] tokens = line.split(regex);
+			// format is "startTime","sessID","endTime","execute <unnamed>: Query","parameters: $1 = ..., $2 = ..."
+			curSessID = tokens[1];
+		}
+		return curSessID;
+	}
+	
+	public static ArrayList<Pair<Integer,Integer>> readLinesPerThread(String dataset, int lowerIndexPerThread, int curThreadIndex, int numThreads, int numLinesPerThread, ArrayList<String> sessQueries, ArrayList<Pair<Integer,Integer>> inputSplits, String pruneKeepModifyRepeatedQueries) throws Exception{
 		System.out.println("Splitting lines for thread "+curThreadIndex+", numLinesPerThread: "+numLinesPerThread+" with lower Index: "+lowerIndexPerThread);
 		int i=0;
 		int runningIndex = Math.min(lowerIndexPerThread+numLinesPerThread-1, sessQueries.size()-1);
@@ -1042,7 +1116,7 @@ public class MINCFragmentIntent{
 			if(pruneKeepModifyRepeatedQueries.equals("PREPROCESS"))
 				curSessID = sessQueries.get(runningIndex).trim().split("; ")[0].split(", ")[0].split(" ")[1];
 			else
-				curSessID = sessQueries.get(runningIndex).split(" ")[0];
+				curSessID = fetchSessID(dataset, sessQueries.get(runningIndex));
 			if(curThreadIndex != numThreads-1 && !curSessID.equals(prevSessID))
 				break;
 			runningIndex++;
@@ -1054,15 +1128,17 @@ public class MINCFragmentIntent{
 		System.out.println("Assigned "+numLinesAssigned+" lines to thread "+curThreadIndex+", lowerIndex: "+lowerIndexPerThread+", upperIndex: "+upperIndexPerThread);
 		return inputSplits;
 	}
+
+
 	
-	public static ArrayList<Pair<Integer,Integer>> splitInputAcrossThreads(ArrayList<String> sessQueries, int numThreads, String pruneKeepModifyRepeatedQueries) throws Exception{	
+	public static ArrayList<Pair<Integer,Integer>> splitInputAcrossThreads(String dataset, ArrayList<String> sessQueries, int numThreads, String pruneKeepModifyRepeatedQueries) throws Exception{	
 		assert numThreads>0;
 		int numLinesPerThread = sessQueries.size()/numThreads;
 		assert numLinesPerThread > 1;
 		ArrayList<Pair<Integer,Integer>> inputSplits = new ArrayList<Pair<Integer,Integer>>();
 		int lowerIndexPerThread = 0;
 		for(int i=0; i<numThreads; i++) {
-			inputSplits = readLinesPerThread(lowerIndexPerThread, i, numThreads, numLinesPerThread, sessQueries, inputSplits, pruneKeepModifyRepeatedQueries);
+			inputSplits = readLinesPerThread(dataset, lowerIndexPerThread, i, numThreads, numLinesPerThread, sessQueries, inputSplits, pruneKeepModifyRepeatedQueries);
 			lowerIndexPerThread = inputSplits.get(i).getValue()+1; // upper index of data for current thread +1 will be the lower index for the next thread
 		}
 		return inputSplits;
@@ -1103,22 +1179,22 @@ public class MINCFragmentIntent{
 	}
 	
 	
-	public static void readFromRawSessionsFile(String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads, int startLineNum, String pruneKeepModifyRepeatedQueries, boolean includeSelOpConst) throws Exception{
+	public static void readFromRawSessionsFile(String dataset, String tempLogDir, String rawSessFile, String intentVectorFile, String line, SchemaParser schParse, int numThreads, int startLineNum, String pruneKeepModifyRepeatedQueries, boolean includeSelOpConst) throws Exception{
 	//	deleteIfExists(intentVectorFile);
 	//	System.out.println("Deleted previous intent file");
 		ArrayList<String> sessQueries;
 		if(pruneKeepModifyRepeatedQueries.equals("PREPROCESS"))
-			sessQueries = countLinesPreProcessed(rawSessFile, startLineNum);
+			sessQueries = countLinesPreProcessed(dataset, rawSessFile, startLineNum);
 		else
-			sessQueries = countLines(rawSessFile, startLineNum);
+			sessQueries = countLines(dataset, rawSessFile, startLineNum);
 		System.out.println("Read sessQueries into main memory");
-		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(sessQueries, numThreads, pruneKeepModifyRepeatedQueries);
+		ArrayList<Pair<Integer,Integer>> inputSplits = splitInputAcrossThreads(dataset, sessQueries, numThreads, pruneKeepModifyRepeatedQueries);
 		System.out.println("Split Input Across Threads");
 		ArrayList<String> outputSplitFiles = defineOutputSplits(tempLogDir, rawSessFile, numThreads);
 		System.out.println("Defined Output File Splits Across Threads");
 		ArrayList<IntentCreatorMultiThread> intentMTs = new ArrayList<IntentCreatorMultiThread>();
 		for(int i=0; i<numThreads; i++) {
-			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(i, sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse, pruneKeepModifyRepeatedQueries, includeSelOpConst);
+			IntentCreatorMultiThread intentMT = new IntentCreatorMultiThread(dataset, i, sessQueries, inputSplits.get(i), outputSplitFiles.get(i), schParse, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			intentMT.start();		
 		}
 	/*	for(IntentCreatorMultiThread intentMT : intentMTs) {
@@ -1166,7 +1242,8 @@ public class MINCFragmentIntent{
 				|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
 			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
 		}
-		String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
+		//String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
+		String configFile = homeDir+"/Documents/DataExploration-Research/BusTracker/InputOutput/MincJavaConfig.txt";
 		SchemaParser schParse = new SchemaParser();
 		schParse.fetchSchema(configFile);
 		HashMap<String, String> configDict = schParse.getConfigDict();
@@ -1179,15 +1256,16 @@ public class MINCFragmentIntent{
 		int startLineNum = Integer.parseInt(configDict.get("MINC_START_LINE_NUM"));
 		String pruneKeepModifyRepeatedQueries = configDict.get("MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES");
 		boolean includeSelOpConst = Boolean.parseBoolean(configDict.get("MINC_SEL_OP_CONST"));
+		String dataset = configDict.get("MINC_DATASET");
 		try {
 			String line = null;
 			String prevSessionID = null;
 			int queryID = 0;
 			
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
-			readFromRawSessionsFile(tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
+			readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			
-			String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
+		/*	String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
 					+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
 					+ "ORDER BY M.sublevel, M.parent, M.ordering";
 			//query = "SELECT id FROM jos_menu WHERE `link` LIKE '%option=com_community&view=profile%' AND `published`=1";
@@ -1215,11 +1293,12 @@ public class MINCFragmentIntent{
 			if(validQuery) {
 				fragmentObj.printIntentVector();
 				fragmentObj.writeIntentVectorToTempFile(query);
-			}
+			} 
+		*/
 	
 		} catch(Exception e) {
 			e.printStackTrace();
-		}			
+		} 		
 	}
 	
 }

@@ -300,13 +300,13 @@ public class SchemaParser {
 				st = st.trim();
 				String key = st.split("=")[0];
 				String val = homeDir+"/"+st.split("=")[1];
-				if(key.contains("MINC_NUM_THREADS") || key.contains("MINC_START_SESS_INDEX") || key.contains("MINC_SEL_OP_CONST")
+				if(key.contains("MINC_NUM_THREADS") || key.contains("MINC_START_SESS_INDEX") || key.contains("MINC_SEL_OP_CONST") || key.contains("MINC_DATASET")
 						|| key.contains("MINC_START_LINE_NUM") || key.contains("MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES"))
 					val = st.split("=")[1];
 				configDict.put(key, val);
 			} 
 			fetchSchemaElements();
-			// System.out.println("Fetched schema elements !");
+			System.out.println("Fetched schema elements !");
 		}
 		catch(Exception e) {
 			e.printStackTrace();
@@ -320,7 +320,8 @@ public class SchemaParser {
 				|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
 			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
 		}
-		String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
+		//String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
+		String configFile = homeDir+"/Documents/DataExploration-Research/BusTracker/InputOutput/MincJavaConfig.txt";
 		SchemaParser schParse = new SchemaParser();
 		schParse.fetchSchema(configFile);
 	}

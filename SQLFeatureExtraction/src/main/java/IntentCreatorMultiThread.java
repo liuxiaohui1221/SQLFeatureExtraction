@@ -29,8 +29,9 @@ public class IntentCreatorMultiThread extends Thread{
 	String pruneKeepModifyRepeatedQueries;
 	String prevQueryBitVector = null;
 	boolean includeSelOpConst;
+	String dataset;
 	
-	public IntentCreatorMultiThread(int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, 
+	public IntentCreatorMultiThread(String dataset, int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, 
 			String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries, boolean includeSelOpConst) {
 		this.sessQueries = sessQueries;
 		this.lowerUpperIndexBounds = lowerUpperIndexBounds;
@@ -39,6 +40,7 @@ public class IntentCreatorMultiThread extends Thread{
 		this.threadID = threadID;
 		this.pruneKeepModifyRepeatedQueries = pruneKeepModifyRepeatedQueries;
 		this.includeSelOpConst = includeSelOpConst;
+		this.dataset = dataset;
 	}
 	
 	public void processQueriesPreprocess() throws Exception{
@@ -106,6 +108,34 @@ public class IntentCreatorMultiThread extends Thread{
 				bw.flush();
 			}
 		}
+	
+	public String fetchMINCQueryFromLine(String line) throws Exception {
+		String[] tokens = line.trim().split(" ");
+		String query = "";
+		for(int i=2; i<tokens.length; i++) {
+			if(i==2)
+				query = tokens[i];
+			else
+				query += " "+tokens[i];
+		}
+		return query;
+	}
+	
+	public String fetchBusTrackerQueryFromLine(String line) throws Exception {
+		String regex = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"; // to split on comma outside double quotes
+		String[] tokens = line.split(regex);
+		// format is "startTime","sessID","endTime","execute <unnamed>: Query","parameters: $1 = ..., $2 = ..."
+		String query = tokens[3].split(": ")[1];
+		return query;
+	}
+	
+	public String fetchQueryFromLine(String line) throws Exception {
+		if(this.dataset.equals("MINC")) 
+			return fetchMINCQueryFromLine(line);
+		else if(this.dataset.equals("BusTracker"))
+			return fetchBusTrackerQueryFromLine(line);
+		return null;
+	}
 		
 	
 	public void processQueriesKeepOrModifyReps() throws Exception{
@@ -121,15 +151,9 @@ public class IntentCreatorMultiThread extends Thread{
 		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
 		for(int index = lowerIndex; index <= upperIndex; index++) {
 			String line = this.sessQueries.get(index);
-			if((pruneKeepModifyRepeatedQueries.equals("KEEP") || pruneKeepModifyRepeatedQueries.equals("MODIFY")) && line.contains("Query")) {
-				String[] tokens = line.trim().split(" ");
-				String query = "";
-				for(int i=2; i<tokens.length; i++) {
-					if(i==2)
-						query = tokens[i];
-					else
-						query += " "+tokens[i];
-				}
+			boolean condToHold = (this.dataset.equals("MINC") && line.contains("Query")) || this.dataset.equals("BusTracker");
+			if((pruneKeepModifyRepeatedQueries.equals("KEEP") || pruneKeepModifyRepeatedQueries.equals("MODIFY")) && condToHold) {
+				String query = fetchQueryFromLine(line);
 		//		System.out.println("Query: "+query);
 				query = query.trim();
 				boolean validQuery = false;
@@ -152,7 +176,7 @@ public class IntentCreatorMultiThread extends Thread{
 						fragmentObj.printIntentVector();*/
 					if(validQuery) {
 			//			System.out.println("Inside Thread ID: "+this.threadID+" Created fragment vector writing it to file");
-						String sessionID = tokens[0];
+						String sessionID = MINCFragmentIntent.fetchSessID(this.dataset, line);
 						if(!sessionID.equals(prevSessionID)) {
 							queryID = 1;  // queryID starts with 1 not 0
 							prevSessionID = sessionID;
@@ -301,24 +325,20 @@ public class IntentCreatorMultiThread extends Thread{
 		int numValidQueries = 0;
 		while(curQueryIndex <= upperQueryIndex) {
 			while(sessionID.equals(prevSessionID) && curQueryIndex <=upperQueryIndex) { // iterates over all queries in a session, terminates on new session
+				boolean condToHold;
 				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
-					if (!query.equals("SELECT VERSION()") && !query.equals("SELECT f.id"))
+					condToHold = this.dataset.equals("BusTracker") || (this.dataset.equals("MINC") && !query.equals("SELECT VERSION()") && !query.equals("SELECT f.id"));
+					if(condToHold)
 						curSessQueries.add(query);
 				}
 				//read queries session-wise
 				String line = this.sessQueries.get(curQueryIndex);
-				if(line.contains("Query")) {
-					String[] tokens = line.trim().split(" ");
-					query = "";
-					for(int i=2; i<tokens.length; i++) {
-						if(i==2)
-							query = tokens[i];
-						else
-							query += " "+tokens[i];
-					}
-					sessionID = tokens[0];
+				condToHold = (this.dataset.equals("MINC") && line.contains("Query")) || this.dataset.equals("BusTracker");
+				if(condToHold) {
+					query = fetchQueryFromLine(line);
 //					System.out.println("Query: "+query);
 					query = query.trim();
+					sessionID = MINCFragmentIntent.fetchSessID(this.dataset, line);
 				}
 				curQueryIndex++;
 			}
