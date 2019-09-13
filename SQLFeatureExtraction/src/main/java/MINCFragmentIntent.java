@@ -1059,7 +1059,7 @@ public class MINCFragmentIntent{
 		int i=0;
 		int absCount = 0;
 		while ((line=br.readLine())!=null /*  && absCount<3000000+startLineNum*/) {
-			if(absCount>=startLineNum && line.contains("execute <unnamed>")) {
+			if(absCount>=startLineNum) {
 				line = line.trim();
 				lines.add(line);
 				i++;
@@ -1098,7 +1098,7 @@ public class MINCFragmentIntent{
 		} else if(dataset.equals("BusTracker")) {
 			String regex = ",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)"; // to split on comma outside double quotes
 			String[] tokens = line.split(regex);
-			// format is "startTime","sessID","endTime","execute <unnamed>: Query","parameters: $1 = ..., $2 = ..."
+			// format is "startTime","sessID","endTime","execute <unnamed>/statement: Query","parameters: $1 = ..., $2 = ..."
 			curSessID = tokens[1];
 			curSessID = curSessID.replaceAll("^\"|\"$", ""); // remove starting and trailing double quotes
 		}
