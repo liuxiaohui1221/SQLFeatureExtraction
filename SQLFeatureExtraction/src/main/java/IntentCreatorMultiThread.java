@@ -245,10 +245,10 @@ public class IntentCreatorMultiThread extends Thread{
 							+ "st.departure_time_minute, s.stop_lat, s.stop_lon, t.direction_id, t.route_id, r.route_short_name from stop AS s RIGHT JOIN stop_time AS st"))
 				return true;
 			for(int i=0; i<sessQueries.size(); i++) {
-				if(sessQueries.get(i+1).contains("SELECT DISTINCT agency_timezone FROM agency WHERE agency_id = $1") &&
+				if(i>=2 && sessQueries.get(i-1).contains("SELECT DISTINCT agency_timezone FROM agency WHERE agency_id = $1") &&
 					sessQueries.get(i).contains("select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
 							+ "st.departure_time_minute, s.stop_lat, s.stop_lon, t.direction_id, t.route_id, r.route_short_name from stop AS s RIGHT JOIN stop_time AS st")  &&
-					sessQueries.get(i+2).contains("select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
+					sessQueries.get(i-2).contains("select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
 							+ "st.departure_time_minute, s.stop_lat, s.stop_lon, t.direction_id, t.route_id, r.route_short_name from stop AS s RIGHT JOIN stop_time AS st"))
 					return true;
 			}
