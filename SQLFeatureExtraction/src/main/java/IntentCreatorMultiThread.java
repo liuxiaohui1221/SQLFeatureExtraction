@@ -393,9 +393,9 @@ public class IntentCreatorMultiThread extends Thread{
 			//	System.out.println("Session "+sessionID+"'s validity: "+validSess);
 				numValidSessions++;
 				numValidQueries+=curSessQueries.size();
-				if(pruneKeepModifyRepeatedQueries.equals("PRUNE"))
-					absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
-					//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
+				//if(pruneKeepModifyRepeatedQueries.equals("PRUNE") || pruneKeepModifyRepeatedQueries.equals("MODIFY"))
+				absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
+				//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
 				absSessID++;
 			}
 			curSessQueries.clear();
