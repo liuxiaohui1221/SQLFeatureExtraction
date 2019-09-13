@@ -140,7 +140,7 @@ public class IntentCreatorMultiThread extends Thread{
 		
 	
 	public void processQueriesKeepReps() throws Exception{
-	//	assert (pruneKeepModifyRepeatedQueries.equals("KEEP") || pruneKeepModifyRepeatedQueries.equals("MODIFY"));
+	//	assert (pruneKeepModifyRepeatedQueries.equals("KEEP") || pruneKeepModifyRepeatedQueries.equals("MODIFY_INTENT"));
 		MINCFragmentIntent.deleteIfExists(this.outputFile);
 		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
 		double absQueryID = 0;
@@ -184,7 +184,7 @@ public class IntentCreatorMultiThread extends Thread{
 						} 
 						else if (pruneKeepModifyRepeatedQueries.equals("KEEP"))
 							queryID++;
-						else if(pruneKeepModifyRepeatedQueries.equals("MODIFY")) {
+						else if(pruneKeepModifyRepeatedQueries.equals("MODIFY_INTENT")) { // for future use to handle repetition in intent vectors
 							String curQueryBitVector = fragmentObj.getIntentBitVector();
 							if (curQueryBitVector.equals(prevQueryBitVector)) {
 								continue;
@@ -244,6 +244,14 @@ public class IntentCreatorMultiThread extends Thread{
 					sessQueries.get(2).contains("select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
 							+ "st.departure_time_minute, s.stop_lat, s.stop_lon, t.direction_id, t.route_id, r.route_short_name from stop AS s RIGHT JOIN stop_time AS st"))
 				return true;
+			for(int i=0; i<sessQueries.size(); i++) {
+				if(sessQueries.get(i+1).contains("SELECT DISTINCT agency_timezone FROM agency WHERE agency_id = $1") &&
+					sessQueries.get(i).contains("select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
+							+ "st.departure_time_minute, s.stop_lat, s.stop_lon, t.direction_id, t.route_id, r.route_short_name from stop AS s RIGHT JOIN stop_time AS st")  &&
+					sessQueries.get(i+2).contains("select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
+							+ "st.departure_time_minute, s.stop_lat, s.stop_lon, t.direction_id, t.route_id, r.route_short_name from stop AS s RIGHT JOIN stop_time AS st"))
+					return true;
+			}
 		}
 		return false;
 	}
@@ -338,7 +346,7 @@ public class IntentCreatorMultiThread extends Thread{
 		return absQueryID;
 	}
 	
-	public void processQueriesPruneReps() throws Exception{
+	public void processQueriesPruneOrModifyReps() throws Exception{
 		MINCFragmentIntent.deleteIfExists(this.outputFile);
 		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
 		double absQueryID = 0;
@@ -376,6 +384,9 @@ public class IntentCreatorMultiThread extends Thread{
 				prevSessionID = sessionID;
 			} 
 			//curQueryIndex = populateCurSessionQueries(curQueryIndex, sessionID, prevSessionID, curSessQueries); // index incremented within this method
+			// if modifyFlag set first condense repetitions to a single occurrence and still prune invalid sessions
+			if(pruneKeepModifyRepeatedQueries.equals("MODIFY"))
+				curSessQueries = modifyQueries(curSessQueries);
 			// if sessQueries is not empty, check for repetitions
 			boolean validSess = isValidSession(curSessQueries);
 			if(validSess) {
@@ -392,75 +403,37 @@ public class IntentCreatorMultiThread extends Thread{
 		System.out.println("Total # Valid Sessions: "+numValidSessions+", # Valid Queries: "+numValidQueries);
 	}
 	
-	public void processQueriesModifyReps() throws Exception{
-		MINCFragmentIntent.deleteIfExists(this.outputFile);
-		BufferedWriter bw = new BufferedWriter(new FileWriter(this.outputFile, true));
-		double absQueryID = 0;
-		double absSessID = 0;
-		String prevSessionID = "";
-		String sessionID = "";
-		String query = "";
-		int lowerQueryIndex = this.lowerUpperIndexBounds.getKey();
-		int upperQueryIndex = this.lowerUpperIndexBounds.getValue();
-		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
-		int curQueryIndex = lowerQueryIndex;
-		ArrayList<String> curSessQueries = new ArrayList<String>();
-		int numValidSessions = 0;
-		int numValidQueries = 0;
-		while(curQueryIndex <= upperQueryIndex) {
-			while(sessionID.equals(prevSessionID) && curQueryIndex <=upperQueryIndex) { // iterates over all queries in a session, terminates on new session
-				boolean condToHold;
-				if(query.toLowerCase().startsWith("select") || query.toLowerCase().startsWith("insert") || query.toLowerCase().startsWith("update") || query.toLowerCase().startsWith("delete")) {
-					condToHold = (this.dataset.equals("BusTracker") && !query.toLowerCase().equals("select 1")) || (this.dataset.equals("MINC") && !query.equals("SELECT VERSION()") && !query.equals("SELECT f.id"));
-					if(condToHold)
-						curSessQueries.add(query);
+	public ArrayList<String> modifyQueries(ArrayList<String> curSessQueries) throws Exception {
+		ArrayList<String> modifiedQueries = new ArrayList<>(curSessQueries);
+		String prevSessQuery = null;
+		for(int i=0; i<curSessQueries.size(); i++) {
+			if(prevSessQuery != null) {
+				StringMetric metric = StringMetrics.cosineSimilarity();
+				String curSessQuery = curSessQueries.get(i);
+				float cosineSim = metric.compare(curSessQuery, prevSessQuery);
+				if(cosineSim< 0.8) {
+					prevSessQuery = curSessQuery;
+					modifiedQueries.add(curSessQuery);
 				}
-				//read queries session-wise
-				String line = this.sessQueries.get(curQueryIndex);
-				condToHold = (this.dataset.equals("MINC") && line.contains("Query")) || this.dataset.equals("BusTracker");
-				if(condToHold) {
-					query = fetchQueryFromLine(line);
-//					System.out.println("Query: "+query);
-					query = query.trim();
-					sessionID = MINCFragmentIntent.fetchSessID(this.dataset, line);
-				}
-				curQueryIndex++;
+			} else {
+				prevSessQuery = curSessQueries.get(i);
+				modifiedQueries.add(prevSessQuery);
 			}
-			if(!sessionID.equals(prevSessionID)) {
-				prevSessionID = sessionID;
-			} 
-			//curQueryIndex = populateCurSessionQueries(curQueryIndex, sessionID, prevSessionID, curSessQueries); // index incremented within this method
-			// if sessQueries is not empty, check for repetitions
-			boolean validSess = isValidSession(curSessQueries);
-			if(validSess) {
-			//	System.out.println("Session "+sessionID+"'s validity: "+validSess);
-				numValidSessions++;
-				numValidQueries+=curSessQueries.size();
-				if(pruneKeepModifyRepeatedQueries.equals("PRUNE"))
-					absQueryID = appendToValidSessFile(absSessID, absQueryID, bw, curSessQueries);
-					//absQueryID = createSessQueryBitVectors(sessionID, absQueryID, bw, curSessQueries);
-				absSessID++;
-			}
-			curSessQueries.clear();
 		}
-		System.out.println("Total # Valid Sessions: "+numValidSessions+", # Valid Queries: "+numValidQueries);
+		return modifiedQueries;
 	}
 	
 	
 	
 	public void run(){
 		try {
-			if (pruneKeepModifyRepeatedQueries.equals("KEEP")) {	
+			if (pruneKeepModifyRepeatedQueries.equals("KEEP") || pruneKeepModifyRepeatedQueries.equals("MODIFY_INTENT")) {	
 				System.out.println(pruneKeepModifyRepeatedQueries);
 				processQueriesKeepReps();
 			}
-			else if(pruneKeepModifyRepeatedQueries.equals("MODIFY")) {
+			else if(pruneKeepModifyRepeatedQueries.equals("MODIFY") || pruneKeepModifyRepeatedQueries.equals("PRUNE")) {
 				System.out.println(pruneKeepModifyRepeatedQueries);
-				processQueriesModifyReps();
-			}
-			else if(pruneKeepModifyRepeatedQueries.equals("PRUNE")) {
-				System.out.println(pruneKeepModifyRepeatedQueries);
-				processQueriesPruneReps();
+				processQueriesPruneOrModifyReps();
 			}
 			else if(pruneKeepModifyRepeatedQueries.equals("PREPROCESS")) {
 				System.out.println(pruneKeepModifyRepeatedQueries);
