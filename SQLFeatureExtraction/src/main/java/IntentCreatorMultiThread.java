@@ -420,6 +420,7 @@ public class IntentCreatorMultiThread extends Thread{
 				modifiedQueries.add(prevSessQuery);
 			}
 		}
+		curSessQueries.clear();
 		return modifiedQueries;
 	}
 	
