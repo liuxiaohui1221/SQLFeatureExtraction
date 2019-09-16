@@ -1053,7 +1053,7 @@ public class MINCFragmentIntent{
 	
 	public static String cleanUpBusTrackerLine(String line) throws Exception {
 		String substr = "((SELECT extract(epoch FROM ";
-		String substr2 = "*1000))";
+		String substr2 = ")*1000))";
 		//((SELECT extract(epoch FROM c.start_date)*1000)) <= 1480475749583
 		if(line.contains(substr) && line.contains(substr2)) {
 			line = line.replace(substr, "");
