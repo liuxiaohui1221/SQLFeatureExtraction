@@ -1051,6 +1051,17 @@ public class MINCFragmentIntent{
 		return lines;
 	}
 	
+	public static String cleanUpBusTrackerLine(String line) throws Exception {
+		String substr = "((SELECT extract(epoch FROM ";
+		String substr2 = "*1000))";
+		//((SELECT extract(epoch FROM c.start_date)*1000)) <= 1480475749583
+		if(line.contains(substr) && line.contains(substr2)) {
+			line = line.replace(substr, "");
+			line = line.replace(substr2, "");
+		}
+		return line;
+	}
+	
 	public static ArrayList<String> countBusTrackerLines(String rawSessFile, int startLineNum) throws Exception{
 		System.out.println("Counting lines from "+rawSessFile);
 		BufferedReader br = new BufferedReader(new FileReader(rawSessFile));
@@ -1061,6 +1072,7 @@ public class MINCFragmentIntent{
 		while ((line=br.readLine())!=null /*  && absCount<3000000+startLineNum*/) {
 			if(absCount>=startLineNum) {
 				line = line.trim();
+				line = cleanUpBusTrackerLine(line);
 				lines.add(line);
 				i++;
 				if (i%1000000 == 0)
@@ -1266,9 +1278,14 @@ public class MINCFragmentIntent{
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
 			readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			
-		/*	String query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
-					+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
-					+ "ORDER BY M.sublevel, M.parent, M.ordering";
+			// String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
+			//		+ "a.avl_agency_name =  '8\\b8164b0b579a1a3cde19a106c8e1fca8' AND t.trip_id =  '33\\94f574661cc4d7d3c40a333a0509fd4f' "
+			//		+ "AND ((SELECT extract(epoch FROM c.start_date)*1000)) <= 1480475749583 AND ((SELECT extract(epoch FROM c.end_date+1)*1000)) >= 1480475749583";
+			//query = "SELECT a.agency_timezone FROM m_agency a WHERE a.agency_id = 80";
+			
+			//query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
+			//		+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
+			//		+ "ORDER BY M.sublevel, M.parent, M.ordering";
 			//query = "SELECT id FROM jos_menu WHERE `link` LIKE '%option=com_community&view=profile%' AND `published`=1";
 			//query = "SELECT COUNT(*) as count from jos_community_questions as a LEFT JOIN jos_community_groups AS b ON a.parentid = b.id LEFT JOIN jos_community_groups_members AS c ON a.parentid = c.groupid WHERE a.id = 2902 AND (b.id IS NULL OR (b.id IS NOT NULL AND b.approvals=0))";
 			//query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.ordering = c.ordering WHERE m.published = 1 and m.params=c.params GROUP BY m.sublevel HAVING m.lft = 2 ORDER BY m.sublevel, m.parent, m.ordering";
@@ -1289,13 +1306,13 @@ public class MINCFragmentIntent{
 			//query = "SELECT COUNT(*) FROM `jos_community_groups_members` AS a INNER JOIN `jos_users` AS b WHERE b.id=a.memberid AND a.memberid NOT IN (SELECT userid from jos_community_courses_ta where courseid = 3569) AND a.groupid='3569' AND a.permissions='1'";
 			//query = "SELECT DISTINCT a.* FROM jos_community_apps AS a WHERE a.`userid`='72' AND a.`apps`!=\"news_feed\" AND a.`apps`!=\"profile\" AND a.`apps`!=\"friends\" AND a.`apps` IN ('walls') ORDER BY a.`ordering`";
 			//query = "SELECT          a.`userid` as _userid ,         a.`status` as _status ,         a.`level`  as _level ,  a.`points`      as _points,     a.`posted_on` as _posted_on,    a.`avatar`      as _avatar ,    a.`thumb`       as _thumb ,     a.`invite`      as _invite,     a.`params`      as _cparams,    a.`view`        as _view,  a.`alias`    as _alias,  a.`friendcount` as _friendcount, s.`userid` as _isonline, u.*  FROM jos_community_users as a  LEFT JOIN jos_users u  ON u.`id`=a.`userid`  LEFT OUTER JOIN jos_session s  ON s.`userid`=a.`userid` WHERE a.`userid` IN (2839,2824,2828)";
-			MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
+	/*		MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
 			boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 			if(validQuery) {
 				fragmentObj.printIntentVector();
 				fragmentObj.writeIntentVectorToTempFile(query);
 			} 
-		*/
+	*/	
 	
 		} catch(Exception e) {
 			e.printStackTrace();
