@@ -925,7 +925,7 @@ public class MINCFragmentIntent{
 				this.parseQuery();
 				this.createFragmentVectors();
 			} catch(Exception e) {
-				e.printStackTrace();
+				//e.printStackTrace();
 				return false;
 			}
 			return true;
@@ -1282,7 +1282,7 @@ public class MINCFragmentIntent{
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
 			readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			
-			 String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
+	/*		 String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
 					+ "a.avl_agency_name =  '8\\b8164b0b579a1a3cde19a106c8e1fca8' AND t.trip_id =  '33\\94f574661cc4d7d3c40a333a0509fd4f' "
 					+ "AND c.start_date <= 1480475749583 AND c.end_date+1 >= 1480475749583";
 			query = "select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
@@ -1329,7 +1329,7 @@ public class MINCFragmentIntent{
 				fragmentObj.printIntentVector();
 				fragmentObj.writeIntentVectorToTempFile(query);
 			} 
-		
+		*/
 	
 		} catch(Exception e) {
 			e.printStackTrace();
