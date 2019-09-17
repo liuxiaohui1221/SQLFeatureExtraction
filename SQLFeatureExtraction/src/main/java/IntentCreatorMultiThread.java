@@ -68,7 +68,7 @@ public class IntentCreatorMultiThread extends Thread{
 				try {						
 					MINCFragmentIntent fragmentObj = null;
 					if(validQuery) {
-						fragmentObj = new MINCFragmentIntent(query, this.schParse, this.includeSelOpConst);
+						fragmentObj = new MINCFragmentIntent(query, this.schParse, this.includeSelOpConst, this.dataset);
 				//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
 					}
 					if(fragmentObj!=null) {
@@ -164,7 +164,7 @@ public class IntentCreatorMultiThread extends Thread{
 				try {						
 					MINCFragmentIntent fragmentObj = null;
 					if(validQuery) {
-						fragmentObj = new MINCFragmentIntent(query, this.schParse, this.includeSelOpConst);
+						fragmentObj = new MINCFragmentIntent(query, this.schParse, this.includeSelOpConst, this.dataset);
 				//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
 					}
 					if(fragmentObj!=null) {
@@ -288,7 +288,7 @@ public class IntentCreatorMultiThread extends Thread{
 		for(String query : curSessQueries) {
 			try {						
 				MINCFragmentIntent fragmentObj = null;
-				fragmentObj = new MINCFragmentIntent(query, this.schParse, this.includeSelOpConst);
+				fragmentObj = new MINCFragmentIntent(query, this.schParse, this.includeSelOpConst, this.dataset);
 				boolean validQuery = false;
 			//		System.out.println("Inside Thread ID: "+this.threadID+" valid Query");
 				if(fragmentObj!=null) {

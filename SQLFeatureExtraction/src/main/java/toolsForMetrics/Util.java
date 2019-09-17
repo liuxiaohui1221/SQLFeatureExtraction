@@ -25,6 +25,7 @@ import net.sf.jsqlparser.expression.AllComparisonExpression;
 import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.expression.Parenthesis;
 import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
+import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
 import net.sf.jsqlparser.expression.operators.relational.InExpression;
 import net.sf.jsqlparser.expression.operators.relational.ItemsList;
 import net.sf.jsqlparser.schema.Column;
@@ -181,6 +182,14 @@ import net.sf.jsqlparser.expression.TimeValue;
 				ColumnExpressionVisitor visitor = new ColumnExpressionVisitor();
 				it.accept(visitor);
 				retVal.addAll(visitor.getColumns());
+				if(visitor.getColumns().isEmpty() && it instanceof ExpressionList) {
+					ExpressionList expList = (ExpressionList) it;
+					ArrayList<Expression> subExps = (ArrayList<Expression>) expList.getExpressions();
+					for(Expression subExp : subExps) {
+						retVal.addAll(processSelect(subExp));
+					}
+					
+				}
 			}
 		} else {
 			retVal.add(e);

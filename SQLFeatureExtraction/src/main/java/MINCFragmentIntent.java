@@ -132,10 +132,12 @@ public class MINCFragmentIntent{
 	String queryType; // select , insert, update, delete
 	SchemaParser schParse; // used for retrieval of schema related information
 	boolean includeSelOpConst; // decide whether or not to include selOpConst
-	public MINCFragmentIntent(String originalSQL, SchemaParser schParse, boolean includeSelOpConst) throws Exception{
+	String dataset; // dataset info
+	public MINCFragmentIntent(String originalSQL, SchemaParser schParse, boolean includeSelOpConst, String dataset) throws Exception{
 		this.originalSQL = originalSQL.toLowerCase();
 		this.schParse = schParse;
 		this.includeSelOpConst = includeSelOpConst;
+		this.dataset = dataset;
 		Global.tableAlias = new HashMap<String, String>();
 		InputStream stream = new ByteArrayInputStream(this.originalSQL.getBytes(StandardCharsets.UTF_8));
 		CCJSqlParser parser = new CCJSqlParser(stream);
@@ -265,7 +267,7 @@ public class MINCFragmentIntent{
 	}
 	
 	public void parseQuery() throws Exception {
-		SQLParser parser = new SQLParser(this.schParse, this.originalSQL, this.includeSelOpConst);
+		SQLParser parser = new SQLParser(this.schParse, this.originalSQL, this.includeSelOpConst, this.dataset);
 		parser.createQueryVector(this.statement);
 		populateOperatorObjects(parser);
 	}
@@ -934,7 +936,7 @@ public class MINCFragmentIntent{
 			//System.exit(0);
 		}		
 	}
-	public static void readFrom100KFile(String queryFile, String line, String prevSessionID, SchemaParser schParse, int queryID, boolean includeSelOpConst) throws Exception{
+	public static void readFrom100KFile(String queryFile, String line, String prevSessionID, SchemaParser schParse, int queryID, boolean includeSelOpConst, String dataset) throws Exception{
 		BufferedReader br = new BufferedReader(new FileReader(queryFile));
 		while((line=br.readLine())!=null) {
 			if(line.contains("Query")) {
@@ -956,7 +958,7 @@ public class MINCFragmentIntent{
 					prevSessionID = sessionID;
 				} else
 					queryID++;
-				MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
+				MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst, dataset);
 				try {
 					boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 					if(validQuery)
@@ -1059,6 +1061,7 @@ public class MINCFragmentIntent{
 			line = line.replace(substr, "");
 			line = line.replace(substr2, "");
 		}
+		line.replaceAll("\\$", "");
 		return line;
 	}
 	
@@ -1217,7 +1220,7 @@ public class MINCFragmentIntent{
 	//	concatenateOutputFiles(outputSplitFiles, intentVectorFile);
 	}
 	
-	public static void readFromConcurrentSessionsFile(String concSessFile, String intentVectorFile, String line, SchemaParser schParse, boolean includeSelOpConst) throws Exception{
+	public static void readFromConcurrentSessionsFile(String concSessFile, String intentVectorFile, String line, SchemaParser schParse, boolean includeSelOpConst, String dataset) throws Exception{
 		BufferedReader br = new BufferedReader(new FileReader(concSessFile));
 		deleteIfExists(intentVectorFile);
 		HashMap<String, Integer> sessionQueryCount = new HashMap<String, Integer>();
@@ -1230,7 +1233,7 @@ public class MINCFragmentIntent{
 				String sessQueryID = tokens[0];
 				String sessID = sessQueryID.split(",")[0].split(" ")[1];
 				
-				MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
+				MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst, dataset);
 				boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 				/*if(validQuery)
 					fragmentObj.printIntentVector();*/
@@ -1278,10 +1281,23 @@ public class MINCFragmentIntent{
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
 			readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			
-			// String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
-			//		+ "a.avl_agency_name =  '8\\b8164b0b579a1a3cde19a106c8e1fca8' AND t.trip_id =  '33\\94f574661cc4d7d3c40a333a0509fd4f' "
-			//		+ "AND ((SELECT extract(epoch FROM c.start_date)*1000)) <= 1480475749583 AND ((SELECT extract(epoch FROM c.end_date+1)*1000)) >= 1480475749583";
-			//query = "SELECT a.agency_timezone FROM m_agency a WHERE a.agency_id = 80";
+			 String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
+					+ "a.avl_agency_name =  '8\\b8164b0b579a1a3cde19a106c8e1fca8' AND t.trip_id =  '33\\94f574661cc4d7d3c40a333a0509fd4f' "
+					+ "AND c.start_date <= 1480475749583 AND c.end_date+1 >= 1480475749583";
+			query = "select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
+					+ "st.departure_time_minute, s.stop_lat, s.stop_lon, t.direction_id, t.route_id, route.route_short_name "
+					+ "from m_stop AS s RIGHT JOIN m_stop_time AS st  ON st.agency_id = s.agency_id "
+					+ "AND st.stop_id = s.stop_id LEFT JOIN m_trip AS t ON t.agency_id = st.agency_id "
+					+ "AND t.trip_id = st.trip_id LEFT JOIN m_route AS route ON t.agency_id = route.agency_id "
+					+ "AND t.route_id = route.route_id WHERE st.estimate_source in "
+					+ "( '10\\2d9d369aa6dcb27617fe409b5cac85ca',  '14\\dbcdf91e0b5531167767adab3b850514') "
+					+ "AND st.agency_id = 1 AND (((departure_time_hour * 60 + departure_time_minute) >= (2-5)  "
+					+ "AND (departure_time_hour * 60 + departure_time_minute) <= (3+10)) "
+					+ "OR ((departure_time_hour * 60 + departure_time_minute) >= (4-5)  "
+					+ "AND (departure_time_hour * 60 + departure_time_minute) <= (5+10)))  "
+					+ "order by st.stop_sequence";
+			 
+			 //query = "SELECT a.agency_timezone FROM m_agency a WHERE a.agency_id = 80";
 			
 			//query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
 			//		+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
@@ -1306,13 +1322,13 @@ public class MINCFragmentIntent{
 			//query = "SELECT COUNT(*) FROM `jos_community_groups_members` AS a INNER JOIN `jos_users` AS b WHERE b.id=a.memberid AND a.memberid NOT IN (SELECT userid from jos_community_courses_ta where courseid = 3569) AND a.groupid='3569' AND a.permissions='1'";
 			//query = "SELECT DISTINCT a.* FROM jos_community_apps AS a WHERE a.`userid`='72' AND a.`apps`!=\"news_feed\" AND a.`apps`!=\"profile\" AND a.`apps`!=\"friends\" AND a.`apps` IN ('walls') ORDER BY a.`ordering`";
 			//query = "SELECT          a.`userid` as _userid ,         a.`status` as _status ,         a.`level`  as _level ,  a.`points`      as _points,     a.`posted_on` as _posted_on,    a.`avatar`      as _avatar ,    a.`thumb`       as _thumb ,     a.`invite`      as _invite,     a.`params`      as _cparams,    a.`view`        as _view,  a.`alias`    as _alias,  a.`friendcount` as _friendcount, s.`userid` as _isonline, u.*  FROM jos_community_users as a  LEFT JOIN jos_users u  ON u.`id`=a.`userid`  LEFT OUTER JOIN jos_session s  ON s.`userid`=a.`userid` WHERE a.`userid` IN (2839,2824,2828)";
-	/*		MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst);
+			MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst, dataset);
 			boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
 			if(validQuery) {
 				fragmentObj.printIntentVector();
 				fragmentObj.writeIntentVectorToTempFile(query);
 			} 
-	*/	
+		
 	
 		} catch(Exception e) {
 			e.printStackTrace();
