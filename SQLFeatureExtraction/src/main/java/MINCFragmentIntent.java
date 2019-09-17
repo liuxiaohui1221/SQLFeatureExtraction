@@ -1061,7 +1061,7 @@ public class MINCFragmentIntent{
 			line = line.replace(substr, "");
 			line = line.replace(substr2, "");
 		}
-		line = line.replace("\\$", "");
+		line = line.replace("$", "");
 		System.out.println(line);
 		return line;
 	}
