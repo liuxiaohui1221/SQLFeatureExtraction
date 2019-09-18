@@ -400,7 +400,16 @@ public class SQLParser{
 			retVal.addAll(processSelectWithConstants(Util.deleteParanthesis(e)));
 		} /*else if (e instanceof ExistsExpression) {
 			retVal.addAll(processSelectWithConstants(((ExistsExpression) e).getRightExpression()));
-		}*/ else if (e instanceof BinaryExpression){
+		}*/
+		else if (e instanceof Between) {
+			Between a = (Between) e;
+			Expression leftExp = a.getLeftExpression();
+			Expression bStart = a.getBetweenExpressionStart();
+			Expression bEnd = a.getBetweenExpressionEnd();
+			if (leftExp instanceof Column)
+				retVal.add(leftExp);
+		} 
+		else if (e instanceof BinaryExpression){
 			BinaryExpression a = (BinaryExpression)e;
 			Expression leftExp = a.getLeftExpression();
 			Expression rightExp = a.getRightExpression();
@@ -560,6 +569,15 @@ public class SQLParser{
 			correct(l,tables);
 			correct(r,tables);
 		}
+		else if (exp instanceof Between) {
+			Between bexp = (Between) exp;
+			Expression l = bexp.getLeftExpression();
+			Expression st = bexp.getBetweenExpressionStart();
+			Expression end = bexp.getBetweenExpressionEnd();
+			correct(l, tables);
+			correct(st, tables);
+			correct(end, tables);
+		} 
 		else if (exp instanceof Parenthesis) {
 			Parenthesis p=(Parenthesis) exp;
 			Expression exp1=p.getExpression();
@@ -869,6 +887,9 @@ public class SQLParser{
 	
 	private void executeSelectWithAlias(SelectBody body, int queryOrder, String alias){
 		if (body instanceof PlainSelect){
+			if(((PlainSelect)body).getFromItem().getAlias()!=null) {
+				consumeFromItem(((PlainSelect)body).getFromItem(), this.tables, queryOrder);
+			}
 			((PlainSelect) body).getFromItem().setAlias(alias);
 			executePlainSelect((PlainSelect)body, queryOrder);
 		} else if (body instanceof Union) {

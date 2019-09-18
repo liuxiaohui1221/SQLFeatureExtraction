@@ -1062,6 +1062,25 @@ public class MINCFragmentIntent{
 			line = line.replace(substr2, "");
 		}
 		line = line.replace("$", "");
+		line = line.replace("|/", "");
+		line = line.replace("^2", "");
+		line = line.replace("CURRENT_DATE", "12-30-2019");
+		String inputQueryPhrase = "select nm.trip_id,nm.id AS message_id, nm.message, nm.timestamp, nm.category,a.firstname AS first_name, a.lastname AS last_name "
+		 		+ "from dv_notes_message nm, dv_account a, (SELECT dv_trip_id, MAX(dv.timestamp) AS maximum FROM dv_notes_message dv WHERE "
+		 		+ "dv_agency_id IN (select a.agency_id from m_agency a, m_agency b where a.agency_id_id=b.agency_id_id and b.agency_id=1) "
+		 		+ "AND dv_trip_id IN";
+		String replacedQueryPhrase = "select nm.trip_id,nm.id AS message_id, nm.message, nm.timestamp, nm.category,a.firstname AS first_name, a.lastname AS last_name "
+		 		+ "from dv_notes_message nm, dv_account a, (SELECT dvNotes.trip_id, MAX(dvNotes.timestamp) AS maximum FROM dv_notes_message dvNotes WHERE "
+		 		+ "dvNotes.agency_id IN (select c.agency_id from m_agency c, m_agency d where c.agency_id_id=d.agency_id_id and d.agency_id=1) "
+		 		+ "AND dvNotes.trip_id IN";
+		line = line.replace(inputQueryPhrase, replacedQueryPhrase);
+		inputQueryPhrase = "GROUP BY dv_trip_id) "
+		 		+ "as nmmax WHERE nm.deleted IS NULL AND a.id=nm.user_id AND nm.trip_id= nmmax.trip_id AND nm.timestamp = nmmax.maximum "
+		 		+ "AND nm.agency_id IN (select a.agency_id from m_agency a, m_agency b where a.agency_id_id=b.agency_id_id and b.agency_id=2)";
+		replacedQueryPhrase = "GROUP BY dvNotes.trip_id) "
+		 		+ "as nmmax WHERE nm.deleted IS NULL AND a.id=nm.user_id AND nm.trip_id= nmmax.trip_id AND nm.timestamp = nmmax.maximum "
+		 		+ "AND nm.agency_id IN (select c.agency_id from m_agency c, m_agency d where c.agency_id_id=d.agency_id_id and d.agency_id=2)";
+		line = line.replace(inputQueryPhrase, replacedQueryPhrase);
 		//System.out.println(line);
 		return line;
 	}
@@ -1282,7 +1301,7 @@ public class MINCFragmentIntent{
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
 			readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 			
-	/*		 String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
+	/*		String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
 					+ "a.avl_agency_name =  '8\\b8164b0b579a1a3cde19a106c8e1fca8' AND t.trip_id =  '33\\94f574661cc4d7d3c40a333a0509fd4f' "
 					+ "AND c.start_date <= 1480475749583 AND c.end_date+1 >= 1480475749583";
 			query = "select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
@@ -1297,8 +1316,25 @@ public class MINCFragmentIntent{
 					+ "OR ((departure_time_hour * 60 + departure_time_minute) >= (4-5)  "
 					+ "AND (departure_time_hour * 60 + departure_time_minute) <= (5+10)))  "
 					+ "order by st.stop_sequence";
+			 query = "SELECT s.stop_id AS stop_id, s.stop_name, s.stop_lat, s.stop_lon, ceiling((h_distance(0.0,0.0,s.stop_lat,s.stop_lon)/1.29)/60) "
+			 		+ "AS walk_time  FROM m_stop s  WHERE s.stop_lat BETWEEN (1-2) AND (3+4)  AND s.agency_id = 5  AND s.stop_lon BETWEEN (6-7) AND (8+9)  "
+			 		+ "ORDER BY (((s.stop_lat-(10))+(s.stop_lon-(11))))";
+			 query = "SELECT id, message_title, message, destination_screen, stamp FROM m_messages WHERE (device = 1 OR device IS NULL) AND "
+			 		+ "(agency_id = 2 OR agency_id IS NULL) AND (device_id = 3 OR device_id IS NULL) AND (app_version = 4 OR app_version IS NULL) "
+			 		+ "AND (NOW() >= start_date OR start_date IS NULL) AND (NOW() < end_date OR end_date IS NULL) "
+			 		+ "AND (trigger_cond = 5 OR "
+			 		+ "trigger_cond IS NULL) AND (SELECT COUNT(*) FROM m_popup_user_log WHERE device_id = 6 AND "
+			 		+ "date_trunc( '3\\1533bfb25649bd25dd740b47c19b84e4', stamp) = 3) < 1ORDER BY num_conditions DESC LIMIT 1";
+			 query = "select nm.trip_id,nm.id AS message_id, nm.message, nm.timestamp, nm.category,a.firstname AS first_name, a.lastname AS last_name "
+				 		+ "from dv_notes_message nm, dv_account a, (SELECT dvNotes.trip_id, MAX(dvNotes.timestamp) AS maximum FROM dv_notes_message dvNotes WHERE "
+				 		+ "dvNotes.agency_id IN (select c.agency_id from m_agency c, m_agency d where c.agency_id_id=d.agency_id_id and d.agency_id=1) "
+				 		+ "AND dvNotes.trip_id IN ( '35\\89ad84e1a460f2041220847c65206b20', '33\\9a6cce223e3aa56cfc2128721095071b', "
+				 		+ "'34\\57c15fbbf86f09cc1453e35c8c89a357', '33\\4d266129b208b1d32a7d75b9b89ec5ea', '35\\cbd995b9084ac97bc03ef0e7695d4b8d', "
+				 		+ "'34\\d21fa0245cc37fec431d5591d6192e89')AND dvNotes.category= '4\\2da45b72d28efeb9a3954206d2ae2fa6' GROUP BY dvNotes.trip_id) "
+				 		+ "as nmmax WHERE nm.deleted IS NULL AND a.id=nm.user_id AND nm.trip_id= nmmax.trip_id AND nm.timestamp = nmmax.maximum "
+				 		+ "AND nm.agency_id IN (select c.agency_id from m_agency c, m_agency d where c.agency_id_id=d.agency_id_id and d.agency_id=2)"; 
 			 
-			 //query = "SELECT a.agency_timezone FROM m_agency a WHERE a.agency_id = 80";
+			//query = "SELECT a.agency_timezone FROM m_agency a WHERE a.agency_id = 80";
 			
 			//query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
 			//		+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
