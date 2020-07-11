@@ -1278,8 +1278,8 @@ public class MINCFragmentIntent{
 				|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
 			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
 		}
-		//String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
-		String configFile = homeDir+"/Documents/DataExploration-Research/BusTracker/InputOutput/MincJavaConfig.txt";
+		String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
+		//String configFile = homeDir+"/Documents/DataExploration-Research/BusTracker/InputOutput/MincJavaConfig.txt";
 		SchemaParser schParse = new SchemaParser();
 		schParse.fetchSchema(configFile);
 		HashMap<String, String> configDict = schParse.getConfigDict();
@@ -1299,8 +1299,9 @@ public class MINCFragmentIntent{
 			int queryID = 0;
 			
 			//uncomment the following when full run needs to happen on EC2 or on EN4119510L
-			readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
-			
+		//	readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
+
+			String query = null;
 	/*		String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
 					+ "a.avl_agency_name =  '8\\b8164b0b579a1a3cde19a106c8e1fca8' AND t.trip_id =  '33\\94f574661cc4d7d3c40a333a0509fd4f' "
 					+ "AND c.start_date <= 1480475749583 AND c.end_date+1 >= 1480475749583";
@@ -1335,10 +1336,10 @@ public class MINCFragmentIntent{
 				 		+ "AND nm.agency_id IN (select c.agency_id from m_agency c, m_agency d where c.agency_id_id=d.agency_id_id and d.agency_id=2)"; 
 			 
 			//query = "SELECT a.agency_timezone FROM m_agency a WHERE a.agency_id = 80";
-			
-			//query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
-			//		+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
-			//		+ "ORDER BY M.sublevel, M.parent, M.ordering";
+	*/
+			query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
+					+ "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
+					+ "ORDER BY M.sublevel, M.parent, M.ordering";
 			//query = "SELECT id FROM jos_menu WHERE `link` LIKE '%option=com_community&view=profile%' AND `published`=1";
 			//query = "SELECT COUNT(*) as count from jos_community_questions as a LEFT JOIN jos_community_groups AS b ON a.parentid = b.id LEFT JOIN jos_community_groups_members AS c ON a.parentid = c.groupid WHERE a.id = 2902 AND (b.id IS NULL OR (b.id IS NOT NULL AND b.approvals=0))";
 			//query = "SELECT m.*, c.`option`, MIN(c.id) as component FROM jos_menu AS m LEFT JOIN jos_components AS c ON m.componentid = c.id and m.name = c.name and m.ordering = c.ordering WHERE m.published = 1 and m.params=c.params GROUP BY m.sublevel HAVING m.lft = 2 ORDER BY m.sublevel, m.parent, m.ordering";
@@ -1365,7 +1366,7 @@ public class MINCFragmentIntent{
 				fragmentObj.printIntentVector();
 				fragmentObj.writeIntentVectorToTempFile(query);
 			} 
-		*/
+
 	
 		} catch(Exception e) {
 			e.printStackTrace();
