@@ -1,6 +1,6 @@
 ## About this repo:
 
-This is a best-effort SQL feature vector extractor which is tailored to the CourseWebsite (MINC) dataset and BusTracker dataset. This is a part of our paper https://dl.acm.org/doi/10.1145/3442338
+This is a best-effort SQL feature vector extractor which is tailored to the CourseWebsite (MINC) dataset and BusTracker dataset. This is a part of our work towards our paper https://dl.acm.org/doi/10.1145/3442338
 
 CourseWebsite (MINC) dataset is proprietary and cannot be released. The BusTracker dataset is from an earlier work http://www.cs.cmu.edu/~malin199/data/tiramisu-sample/ 
 
