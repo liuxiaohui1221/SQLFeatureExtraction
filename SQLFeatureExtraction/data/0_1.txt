@@ -1,4 +1,0 @@
-0;select course.course_id,course.title from course
-0;select course_id from course
-0;select distinct course_id,title from course
-0;select course_id,title from course
