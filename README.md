@@ -1,8 +1,11 @@
 ## About this repo:
 
-This is a best-effort SQL parser which is tailored to the CourseWebsite (MINC) dataset and BusTracker dataset.
+This is a best-effort SQL feature vector extractor which is tailored to the CourseWebsite (MINC) dataset and BusTracker dataset.
 
-MINC dataset is proprietary and cannot be released. The BusTracker dataset is from an earlier work cited in our paper.
+CourseWebsite (MINC) dataset is proprietary and cannot be released. The BusTracker dataset is from an earlier work http://www.cs.cmu.edu/~malin199/data/tiramisu-sample/ 
+
+The version of the BusTracker dataset we used is available at
+* https://www.dropbox.com/s/twvsb5f8zj7vqol/BusTracker.zip?dl=0
 
 This github repo has been initially cloned from https://github.com/UBOdin/EttuBench. On the top of their JSQLParser implementation, we have built our SQL fragment embedding vector creator
 
