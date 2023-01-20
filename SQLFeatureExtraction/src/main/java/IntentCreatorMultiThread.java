@@ -215,6 +215,7 @@ public class IntentCreatorMultiThread extends Thread{
 	}
 	
 	public boolean hasRecurringQueries(ArrayList<String> sessQueries) {
+		// Here we manually detected query sub-sequences which are highly repetitive and pruned them 
 		if(this.dataset.equals("MINC")) {
 			if(sessQueries.size()==2 && sessQueries.get(0).contains("SELECT * FROM jos_session WHERE session_id =") && 
 					sessQueries.get(1).contains("UPDATE `jos_session` SET `time`="))
