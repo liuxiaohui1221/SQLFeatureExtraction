@@ -7,7 +7,7 @@ CourseWebsite (MINC) dataset is proprietary and cannot be released. The BusTrack
 The version of the BusTracker dataset we used is available at
 * https://www.dropbox.com/s/umqj1dnc7bhvpcw/BusTracker.zip?dl=0
 
-Pre-created SQL frgment vectors for the BusTracker dataset are available in BusTracker/InputOutput/MincBitFragmentIntentSessions
+Pre-created SQL fragment vectors for the BusTracker dataset are available at BusTracker/InputOutput/MincBitFragmentIntentSessions
 
 This github repo has been initially cloned from https://github.com/UBOdin/EttuBench. On the top of their JSQLParser implementation, we have built our SQL fragment embedding vector creator
 
