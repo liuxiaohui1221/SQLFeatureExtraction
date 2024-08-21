@@ -34,7 +34,6 @@ import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubSelect;
-import javafx.util.Pair;
 
 /**
  * This is a service module for query similarity metrics
@@ -363,7 +362,7 @@ import net.sf.jsqlparser.expression.TimeValue;
         }
         
        for(String s:set2) {
-    	   	if(!set1.getKey().equals(s.trim()) && !set1.getValue().equals(s.trim()))
+    	   	if(!set1.first.equals(s.trim()) && !set1.second.equals(s.trim()))
     	   		return false;
        }
        return true;

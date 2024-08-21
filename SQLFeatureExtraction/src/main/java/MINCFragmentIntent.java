@@ -12,84 +12,25 @@ import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
-import java.util.Map.Entry;
 import java.util.Set;
-import java.util.TreeSet;
 
-import javafx.util.Pair;
-import net.sf.jsqlparser.expression.Expression;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
 import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
-import net.sf.jsqlparser.statement.select.AllColumns;
-import net.sf.jsqlparser.statement.select.AllTableColumns;
-import net.sf.jsqlparser.statement.select.FromItem;
-import net.sf.jsqlparser.statement.select.Join;
-import net.sf.jsqlparser.statement.select.PlainSelect;
 import net.sf.jsqlparser.statement.select.Select;
-import net.sf.jsqlparser.statement.select.SelectBody;
-import net.sf.jsqlparser.statement.select.SelectExpressionItem;
-import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.SubSelect;
 //import net.sf.jsqlparser.statement.select.Union;
-import net.sf.jsqlparser.statement.select.WithItem;
 import net.sf.jsqlparser.statement.update.Update;
-import toolsForMetrics.ExtendedColumn;
 import toolsForMetrics.Global;
-import toolsForMetrics.Schema;
-import toolsForMetrics.SelectItemListParser;
+import toolsForMetrics.Pair;
 import toolsForMetrics.Util;
-import net.sf.jsqlparser.expression.AllComparisonExpression;
-import net.sf.jsqlparser.expression.AnyComparisonExpression;
-import net.sf.jsqlparser.expression.BinaryExpression;
-import net.sf.jsqlparser.expression.CaseExpression;
-import net.sf.jsqlparser.expression.Expression;
-import net.sf.jsqlparser.expression.Function;
 //import net.sf.jsqlparser.expression.InverseExpression;
-import net.sf.jsqlparser.expression.Parenthesis;
-import net.sf.jsqlparser.expression.StringValue;
-import net.sf.jsqlparser.expression.WhenClause;
-import net.sf.jsqlparser.expression.operators.arithmetic.Addition;
-import net.sf.jsqlparser.expression.operators.arithmetic.Division;
-import net.sf.jsqlparser.expression.operators.arithmetic.Multiplication;
-import net.sf.jsqlparser.expression.operators.arithmetic.Subtraction;
-import net.sf.jsqlparser.expression.operators.conditional.AndExpression;
-import net.sf.jsqlparser.expression.operators.conditional.OrExpression;
-import net.sf.jsqlparser.expression.operators.relational.Between;
-import net.sf.jsqlparser.expression.operators.relational.EqualsTo;
-import net.sf.jsqlparser.expression.operators.relational.ExistsExpression;
-import net.sf.jsqlparser.expression.operators.relational.ExpressionList;
-import net.sf.jsqlparser.expression.operators.relational.GreaterThan;
-import net.sf.jsqlparser.expression.operators.relational.GreaterThanEquals;
-import net.sf.jsqlparser.expression.operators.relational.InExpression;
-import net.sf.jsqlparser.expression.operators.relational.IsNullExpression;
-import net.sf.jsqlparser.expression.operators.relational.ItemsList;
-import net.sf.jsqlparser.expression.operators.relational.LikeExpression;
-import net.sf.jsqlparser.expression.operators.relational.MinorThan;
-import net.sf.jsqlparser.expression.operators.relational.MinorThanEquals;
-import net.sf.jsqlparser.expression.operators.relational.NotEqualsTo;
 import net.sf.jsqlparser.parser.CCJSqlParser;
-import net.sf.jsqlparser.parser.ParseException;
-import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.schema.Table;
-import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.select.Distinct;
-import net.sf.jsqlparser.statement.select.FromItem;
-import net.sf.jsqlparser.statement.select.Join;
-import net.sf.jsqlparser.statement.select.OrderByElement;
-import net.sf.jsqlparser.statement.select.PlainSelect;
-import net.sf.jsqlparser.statement.select.Select;
-import net.sf.jsqlparser.statement.select.SelectBody;
-import net.sf.jsqlparser.statement.select.SelectExpressionItem;
-import net.sf.jsqlparser.statement.select.SelectItem;
-import net.sf.jsqlparser.statement.select.SubJoin;
-import net.sf.jsqlparser.statement.select.SubSelect;
+
 import java.net.InetAddress;
-import java.net.UnknownHostException;
+
 public class MINCFragmentIntent{
 	String originalSQL;
 	Statement statement;
@@ -410,8 +351,8 @@ public class MINCFragmentIntent{
 		HashMap<String,ArrayList<String>> tableColumnDict = new HashMap<String,ArrayList<String>>();
 		for(Column c:colSet) {
 			Pair<String,String> tabColName = this.retrieveTabColName(c);
-			String tableName = tabColName.getKey();
-			String colName = tabColName.getValue();
+			String tableName = tabColName.first;
+			String colName = tabColName.second;
 			if(tableName == null)
 				continue;
 			if (!tableColumnDict.containsKey(tableName))
@@ -514,8 +455,8 @@ public class MINCFragmentIntent{
 			HashSet<String> columnNamePair = new HashSet<String>();
 			for(Column c:colPair) {
 				Pair<String,String> tabColName = this.retrieveTabColName(c);
-				String tableName = tabColName.getKey();
-				String colName = tabColName.getValue();
+				String tableName = tabColName.first;
+				String colName = tabColName.second;
 				if(tableName == null)
 					continue;
 				tableNamePair.add(tableName);
@@ -566,8 +507,8 @@ public class MINCFragmentIntent{
 		
 		
 		HashSet<String> pairToSet = new HashSet<String>();
-		pairToSet.add(set1.getKey().trim());
-		pairToSet.add(set1.getValue().trim());
+		pairToSet.add(set1.first.trim());
+		pairToSet.add(set1.second.trim());
 		
 	/*	if(pairToSet.contains("params")) {
 			 int a = 1;
@@ -585,8 +526,8 @@ public class MINCFragmentIntent{
 			for(int i=0; i<colPair.size(); i++) {
 				Column c = colPair.get(i);
 				Pair<String,String> tabColName = this.retrieveTabColName(c);
-				String tableName = tabColName.getKey();
-				String colName = tabColName.getValue();
+				String tableName = tabColName.first;
+				String colName = tabColName.second;
 				if(tableName == null)
 					continue;
 				if(i==0) {
@@ -625,7 +566,7 @@ public class MINCFragmentIntent{
 			ArrayList<String> joinPredListQuery = joinPredDictQuery.get(tablePairQuery);
 			Pair<Integer,Integer> startEndBitPos = joinPredBitPosSchema.get(tablePairQuery);
 			for(String joinPredQuery : joinPredListQuery) {
-				int bitIndex = startEndBitPos.getKey()+joinPredListSchema.indexOf(joinPredQuery);
+				int bitIndex = startEndBitPos.first+joinPredListSchema.indexOf(joinPredQuery);
 				joinPredIntentVector.set(bitIndex);
 			}
 		}
@@ -637,17 +578,17 @@ public class MINCFragmentIntent{
 /*	public void createBitVectorForJoinDeprecated() throws Exception{
 		//key is tablePair and value is a list of column pairs
 		HashMap<HashSet<String>,ArrayList<HashSet<String>>> joinPredDictQuery = convertColumnListToStringSet();
-		HashMap<String,ArrayList<Pair<String,String>>> joinPredDictSchema = this.schParse.fetchMINCJoinPreds();
-		HashMap<String,Pair<Integer,Integer>> joinPredBitPosSchema = this.schParse.fetchMINCJoinPredBitPos();
+		HashMap<String,ArrayList<toolsForMetrics.Pair<String,String>>> joinPredDictSchema = this.schParse.fetchMINCJoinPreds();
+		HashMap<String,toolsForMetrics.Pair<Integer,Integer>> joinPredBitPosSchema = this.schParse.fetchMINCJoinPredBitPos();
 		HashSet<Integer> bitPosToSet = new HashSet<Integer>();
 		for(HashSet<String> tablePairQuery : joinPredDictQuery.keySet()) {
 			String dictKey = locateHashSetInKeys(tablePairQuery, new HashSet<String>(joinPredDictSchema.keySet()));
 			ArrayList<HashSet<String>> joinPredListQuery = joinPredDictQuery.get(tablePairQuery);
-			ArrayList<Pair<String,String>> joinPredListSchema = joinPredDictSchema.get(dictKey);
-			Pair<Integer,Integer> startEndBitPos = joinPredBitPosSchema.get(dictKey);
+			ArrayList<toolsForMetrics.Pair<String,String>> joinPredListSchema = joinPredDictSchema.get(dictKey);
+			toolsForMetrics.Pair<Integer,Integer> startEndBitPos = joinPredBitPosSchema.get(dictKey);
 			for(HashSet<String> joinPredQuery : joinPredListQuery) {
 				int joinPredSchemaIndex = 0;
-				for(Pair<String,String> joinPredSchema : joinPredListSchema) {
+				for(toolsForMetrics.Pair<String,String> joinPredSchema : joinPredListSchema) {
 					if(compareJoinPreds(joinPredSchema, joinPredQuery)) {
 						int bitIndex = startEndBitPos.getKey()+joinPredSchemaIndex;
 						bitPosToSet.add(bitIndex);
@@ -713,8 +654,8 @@ public class MINCFragmentIntent{
 	}
 	
 	public int fetchMatchingBucketIndex(HashMap<String, Pair<Integer, Integer>> selPredColRangeBitPos, String selColFullName, int binIndex) {
-		int lo_index = selPredColRangeBitPos.get(selColFullName).getKey();
-		int hi_index = selPredColRangeBitPos.get(selColFullName).getValue();
+		int lo_index = selPredColRangeBitPos.get(selColFullName).first;
+		int hi_index = selPredColRangeBitPos.get(selColFullName).second;
 		assert lo_index + binIndex <= hi_index;
 		return lo_index + binIndex;
 	}
@@ -762,8 +703,8 @@ public class MINCFragmentIntent{
 		constVal = constVal.replaceAll("^\'|\'$", "");
 		for(int binIndex = 0; binIndex < rangeBins.size(); binIndex++) {
 			Pair<String, String> rangeBin = rangeBins.get(binIndex);
-			lo_str = rangeBin.getKey();
-			hi_str = rangeBin.getValue();
+			lo_str = rangeBin.first;
+			hi_str = rangeBin.second;
 			// first look for %x% substring comparison
 			if(constVal.startsWith("%")){
 				String tempStr = constVal.replace("%", "");
@@ -788,12 +729,12 @@ public class MINCFragmentIntent{
 		int constValInt = Integer.parseInt(constVal);
 		for(int binIndex = 0; binIndex < rangeBins.size(); binIndex++) {
 			Pair<String, String> rangeBin = rangeBins.get(binIndex);
-			if(rangeBin.getKey().equals("null") && rangeBin.getValue().equals("null")) {
+			if(rangeBin.first.equals("null") && rangeBin.second.equals("null")) {
 				int bucketIndex = fetchMatchingBucketIndex(selPredColRangeBitPos, selColFullName, binIndex);
 				return bucketIndex;
 			}
-			lo = Integer.parseInt(rangeBin.getKey());
-			hi = Integer.parseInt(rangeBin.getValue());
+			lo = Integer.parseInt(rangeBin.first);
+			hi = Integer.parseInt(rangeBin.second);
 			if(constValInt>=lo && constValInt<=hi) {
 				int bucketIndex = fetchMatchingBucketIndex(selPredColRangeBitPos, selColFullName, binIndex);
 				return bucketIndex;
@@ -855,8 +796,8 @@ public class MINCFragmentIntent{
 	
 	public String retrieveFullColumnName(Column c) throws Exception{
 		Pair<String, String> tabColName = retrieveTabColName(c);
-		String tableName = tabColName.getKey();
-		String colName = tabColName.getValue();
+		String tableName = tabColName.first;
+		String colName = tabColName.second;
 		String colFullName = tableName+"."+colName;
 		return colFullName;
 	}
@@ -1175,7 +1116,8 @@ public class MINCFragmentIntent{
 		int lowerIndexPerThread = 0;
 		for(int i=0; i<numThreads; i++) {
 			inputSplits = readLinesPerThread(dataset, lowerIndexPerThread, i, numThreads, numLinesPerThread, sessQueries, inputSplits, pruneKeepModifyRepeatedQueries);
-			lowerIndexPerThread = inputSplits.get(i).getValue()+1; // upper index of data for current thread +1 will be the lower index for the next thread
+			lowerIndexPerThread = inputSplits.get(i).second+1; // upper index of data for current thread +1 will be the lower
+			// index for the next thread
 		}
 		return inputSplits;
 	}
@@ -1272,14 +1214,14 @@ public class MINCFragmentIntent{
 	}
 	
 	public static void main(String[] args) {
-		String homeDir = System.getProperty("user.home");
+//		String homeDir = System.getProperty("user.home");
 		System.out.println(MINCFragmentIntent.getMachineName());
-		if(MINCFragmentIntent.getMachineName().contains("4119510") || MINCFragmentIntent.getMachineName().contains("4119509")
-				|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
-			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
-		}
-		String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
-		//String configFile = homeDir+"/Documents/DataExploration-Research/BusTracker/InputOutput/MincJavaConfig.txt";
+//		if(MINCFragmentIntent.getMachineName().contains("4119510") || MINCFragmentIntent.getMachineName().contains("4119509")
+//				|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
+//			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
+//		}
+//		String configFile = homeDir+"/var/data/MINC/InputOutput/MincJavaConfig.txt";
+		String configFile = "/var/data/BusTracker/InputOutput/MincJavaConfig.txt";
 		SchemaParser schParse = new SchemaParser();
 		schParse.fetchSchema(configFile);
 		HashMap<String, String> configDict = schParse.getConfigDict();
@@ -1379,7 +1321,7 @@ public class MINCFragmentIntent{
  * //readFrom100KFile(queryFile, line, prevSessionID, schParse, queryID);
  * //readFromConcurrentSessionsFile(concSessFile, intentVectorFile, line, schParse);
  * public static void mainOld(String[] args) {
-		String queryFile = "/Users/postgres/Documents/DataExploration-Research/CreditCardDataset/NYCCleanedSessions";
+		String queryFile = "/Users/postgres/var/data/CreditCardDataset/NYCCleanedSessions";
 		try {
 			BufferedReader br = new BufferedReader(new FileReader(queryFile));
 			String line = null;
@@ -1455,7 +1397,7 @@ public class MINCFragmentIntent{
 		HashMap<String, ArrayList<String>> selPredOpMap = new HashMap<String, ArrayList<String>>();
 		for(Column c : this.selPredOps.keySet()) {
 			String opVal = this.selPredOps.get(c);
-			Pair<String, String> tabColName = retrieveTabColName(c);
+			toolsForMetrics.Pair<String, String> tabColName = retrieveTabColName(c);
 			String tableName = tabColName.getKey();
 			String colName = tabColName.getValue();
 			if(!selPredOpMap.containsKey(tableName)) {

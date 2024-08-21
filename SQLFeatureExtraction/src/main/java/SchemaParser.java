@@ -1,20 +1,12 @@
 import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
 import java.io.FileReader;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.TreeSet;
 import java.util.Arrays;
+
+import toolsForMetrics.Pair;
 import toolsForMetrics.Util;
-import javafx.util.Pair;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+
 public class SchemaParser {
 	//following are the schema data structures
 	HashMap<String,Integer> MINCTables = new HashMap<String,Integer>();
@@ -23,7 +15,7 @@ public class SchemaParser {
 	HashMap<String,String> MINCColTypes = new HashMap<String,String>();
 	HashMap<String,Integer> MINCColBitPos = new HashMap<String,Integer>();
 	HashMap<String,ArrayList<String>> MINCJoinPreds = new HashMap<String,ArrayList<String>>();
-	HashMap<String,Pair<Integer, Integer>> MINCJoinPredBitPos = new HashMap<String,Pair<Integer, Integer>>();
+	HashMap<String, Pair<Integer, Integer>> MINCJoinPredBitPos = new HashMap<String,Pair<Integer, Integer>>();
 	HashMap<String,Integer> MINCSelPredCols = new HashMap<String,Integer>();
 	HashMap<String,Pair<Integer,Integer>> MINCSelPredOpBitPos = new HashMap<String,Pair<Integer,Integer>>();
 	HashMap<String,Pair<Integer,Integer>> MINCSelPredColRangeBitPos = new HashMap<String,Pair<Integer,Integer>>();
@@ -107,7 +99,7 @@ public class SchemaParser {
 				//String[] joinPreds = right.split(",(?=([^\']*\'[^\']*\')*[^\']*$)");
 				for(String joinPred : joinPreds) {
 					joinPred = joinPred.replace("'", "");
-					//Pair<String,String> colPair = new Pair<>(joinPred.split(",")[0], joinPred.split(",")[1]);
+					//toolsForMetrics.Pair<String,String> colPair = new toolsForMetrics.Pair<>(joinPred.split(",")[0], joinPred.split(",")[1]);
 					joinPredVal.add(joinPred);
 				}
 				MINCJoinPredDict.put(key, joinPredVal);
@@ -290,12 +282,13 @@ public class SchemaParser {
 		try {
 			configDict = new HashMap<String, String>();
 			BufferedReader br = new BufferedReader(new FileReader(configFile)); 
-			String st; 
-			String homeDir = System.getProperty("user.home");
-			if(MINCFragmentIntent.getMachineName().contains("4119510") || MINCFragmentIntent.getMachineName().contains("4119509")
-					|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
-				homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
-			}
+			String st;
+			String homeDir="";
+//			String homeDir = System.getProperty("user.home");
+//			if(MINCFragmentIntent.getMachineName().contains("4119510") || MINCFragmentIntent.getMachineName().contains("4119509")
+//					|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
+//				homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
+//			}
 			while ((st = br.readLine()) != null) {
 				st = st.trim();
 				String key = st.split("=")[0];
@@ -304,9 +297,11 @@ public class SchemaParser {
 						|| key.contains("MINC_START_LINE_NUM") || key.contains("MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES"))
 					val = st.split("=")[1];
 				configDict.put(key, val);
-			} 
+			}
+			System.out.println("before MINCColumns:"+MINCColumns.size());
 			fetchSchemaElements();
 			System.out.println("Fetched schema elements !");
+			System.out.println("MINCColumns:"+MINCColumns.size());
 		}
 		catch(Exception e) {
 			e.printStackTrace();
@@ -314,14 +309,15 @@ public class SchemaParser {
 	}
 	
 	public static void main(String[] args) {
-		String homeDir = System.getProperty("user.home");
-		System.out.println(MINCFragmentIntent.getMachineName());
-		if(MINCFragmentIntent.getMachineName().contains("4119510") || MINCFragmentIntent.getMachineName().contains("4119509")
-				|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
-			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
-		}
+//		String homeDir = System.getProperty("user.home");
+//		System.out.println(MINCFragmentIntent.getMachineName());
+//		if(MINCFragmentIntent.getMachineName().contains("4119510") || MINCFragmentIntent.getMachineName().contains("4119509")
+//				|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
+//			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
+//		}
+		String homeDir="";
 		//String configFile = homeDir+"/Documents/DataExploration-Research/MINC/InputOutput/MincJavaConfig.txt";
-		String configFile = homeDir+"/Documents/DataExploration-Research/BusTracker/InputOutput/MincJavaConfig.txt";
+		String configFile = homeDir+"/var/data/BusTracker/InputOutput/MincJavaConfig.txt";
 		SchemaParser schParse = new SchemaParser();
 		schParse.fetchSchema(configFile);
 	}

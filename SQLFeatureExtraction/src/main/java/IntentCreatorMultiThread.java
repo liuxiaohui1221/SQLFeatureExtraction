@@ -1,24 +1,10 @@
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map.Entry;
-import java.util.TreeSet;
+
 import org.simmetrics.StringMetric;
 import org.simmetrics.metrics.StringMetrics;
-import org.simmetrics.metrics.CosineSimilarity;
-import javafx.util.Pair;
+import toolsForMetrics.Pair;
 
 public class IntentCreatorMultiThread extends Thread{
 	ArrayList<String> sessQueries;
@@ -31,7 +17,7 @@ public class IntentCreatorMultiThread extends Thread{
 	boolean includeSelOpConst;
 	String dataset;
 	
-	public IntentCreatorMultiThread(String dataset, int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds, 
+	public IntentCreatorMultiThread(String dataset, int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds,
 			String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries, boolean includeSelOpConst) {
 		this.sessQueries = sessQueries;
 		this.lowerUpperIndexBounds = lowerUpperIndexBounds;
@@ -51,8 +37,8 @@ public class IntentCreatorMultiThread extends Thread{
 			int queryID = 0;
 			String prevSessionID = "";
 			String concLine = "";
-			int lowerIndex = this.lowerUpperIndexBounds.getKey();
-			int upperIndex = this.lowerUpperIndexBounds.getValue();
+			int lowerIndex = this.lowerUpperIndexBounds.first;
+			int upperIndex = this.lowerUpperIndexBounds.second;
 			System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
 			for(int index = lowerIndex; index <= upperIndex; index++) {
 				String line = this.sessQueries.get(index);
@@ -147,8 +133,8 @@ public class IntentCreatorMultiThread extends Thread{
 		int queryID = 0;
 		String prevSessionID = "";
 		String concLine = "";
-		int lowerIndex = this.lowerUpperIndexBounds.getKey();
-		int upperIndex = this.lowerUpperIndexBounds.getValue();
+		int lowerIndex = this.lowerUpperIndexBounds.first;
+		int upperIndex = this.lowerUpperIndexBounds.second;
 		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
 		for(int index = lowerIndex; index <= upperIndex; index++) {
 			String line = this.sessQueries.get(index);
@@ -355,8 +341,8 @@ public class IntentCreatorMultiThread extends Thread{
 		String prevSessionID = "";
 		String sessionID = "";
 		String query = "";
-		int lowerQueryIndex = this.lowerUpperIndexBounds.getKey();
-		int upperQueryIndex = this.lowerUpperIndexBounds.getValue();
+		int lowerQueryIndex = this.lowerUpperIndexBounds.first;
+		int upperQueryIndex = this.lowerUpperIndexBounds.second;
 		System.out.println("Initialized Thread ID: "+this.threadID+" with outputFile "+this.outputFile);
 		int curQueryIndex = lowerQueryIndex;
 		ArrayList<String> curSessQueries = new ArrayList<String>();
