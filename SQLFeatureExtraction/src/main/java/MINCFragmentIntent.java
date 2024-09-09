@@ -765,13 +765,15 @@ public class MINCFragmentIntent{
 		HashMap<String, Pair<Integer, Integer>> selPredColRangeBitPos = this.schParse.fetchMINCSelPredColRangeBitPos();
 		ArrayList<Pair<String, String>> rangeBins = selPredColRangeBins.get(selColFullName);
 		boolean isInt = isInteger(constVal);
-		if(isInt)
-			isInt = checkForIntColType(selColFullName);
+		if(isInt) {
+            isInt = checkForIntColType(selColFullName);
+        }
 		int matchingBucketIndex = -1;
-		if(isInt)
-			matchingBucketIndex = findSelColRangeBinInteger(constVal, rangeBins, selPredColRangeBins, selPredColRangeBitPos, selColFullName);
-		else
-			matchingBucketIndex = findSelColRangeBinString(constVal, rangeBins, selPredColRangeBins, selPredColRangeBitPos, selColFullName);
+		if(isInt) {
+            matchingBucketIndex = findSelColRangeBinInteger(constVal, rangeBins, selPredColRangeBins, selPredColRangeBitPos, selColFullName);
+        } else {
+            matchingBucketIndex = findSelColRangeBinString(constVal, rangeBins, selPredColRangeBins, selPredColRangeBitPos, selColFullName);
+        }
 		return matchingBucketIndex;
 	}
 	
@@ -866,7 +868,7 @@ public class MINCFragmentIntent{
 				this.parseQuery();
 				this.createFragmentVectors();
 			} catch(Exception e) {
-				//e.printStackTrace();
+				e.printStackTrace();
 				return false;
 			}
 			return true;
@@ -877,7 +879,7 @@ public class MINCFragmentIntent{
 			//System.exit(0);
 		}		
 	}
-	public static void readFrom100KFile(String queryFile, String line, String prevSessionID, SchemaParser schParse, int queryID, boolean includeSelOpConst, String dataset) throws Exception{
+	/*public static void readFrom100KFile(String queryFile, String line, String prevSessionID, SchemaParser schParse, int queryID, boolean includeSelOpConst, String dataset) throws Exception{
 		BufferedReader br = new BufferedReader(new FileReader(queryFile));
 		while((line=br.readLine())!=null) {
 			if(line.contains("Query")) {
@@ -911,7 +913,7 @@ public class MINCFragmentIntent{
 			}
 		}
 	}
-	
+	*/
 	public static void deleteIfExists(String fileName) throws Exception{
 		File outFile = new File(fileName);
 		boolean delIfExists = Files.deleteIfExists(outFile.toPath());
@@ -1182,7 +1184,7 @@ public class MINCFragmentIntent{
 	//	concatenateOutputFiles(outputSplitFiles, intentVectorFile);
 	}
 	
-	public static void readFromConcurrentSessionsFile(String concSessFile, String intentVectorFile, String line, SchemaParser schParse, boolean includeSelOpConst, String dataset) throws Exception{
+	/*public static void readFromConcurrentSessionsFile(String concSessFile, String intentVectorFile, String line, SchemaParser schParse, boolean includeSelOpConst, String dataset) throws Exception{
 		BufferedReader br = new BufferedReader(new FileReader(concSessFile));
 		deleteIfExists(intentVectorFile);
 		HashMap<String, Integer> sessionQueryCount = new HashMap<String, Integer>();
@@ -1197,8 +1199,8 @@ public class MINCFragmentIntent{
 				
 				MINCFragmentIntent fragmentObj = new MINCFragmentIntent(query, schParse, includeSelOpConst, dataset);
 				boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
-				/*if(validQuery)
-					fragmentObj.printIntentVector();*/
+				*//*if(validQuery)
+					fragmentObj.printIntentVector();*//*
 				if(validQuery) {
 					int queryID = updateSessionQueryCount(sessionQueryCount, sessID);
 					absQueryID++;
@@ -1212,7 +1214,7 @@ public class MINCFragmentIntent{
 			}
 		}
 	}
-	
+	*/
 	public static void main(String[] args) {
 //		String homeDir = System.getProperty("user.home");
 		System.out.println(MINCFragmentIntent.getMachineName());
