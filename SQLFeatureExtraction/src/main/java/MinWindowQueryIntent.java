@@ -1,7 +1,13 @@
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.HashMap;
+import java.util.List;
 
 public class MinWindowQueryIntent {
+    private static SchemaParser schParse = new SchemaParser();
+    private static boolean includeSelOpConst;
+    private static String dataset;
+
     public static void main(String[] args) {
 //		String homeDir = System.getProperty("user.home");
         System.out.println(MINCFragmentIntent.getMachineName());
@@ -11,7 +17,6 @@ public class MinWindowQueryIntent {
 //		}
 //		String configFile = homeDir+"/var/data/MINC/InputOutput/MincJavaConfig.txt";
         String configFile = "/var/data/BusTracker/InputOutput/MincJavaConfig.txt";
-        SchemaParser schParse = new SchemaParser();
         schParse.fetchSchema(configFile);
         HashMap<String, String> configDict = schParse.getConfigDict();
         String queryFile = "/Users/postgres/PycharmProjects/HumanIntentEvaluation/sample_100K.log";
@@ -22,8 +27,8 @@ public class MinWindowQueryIntent {
         int numThreads = Integer.parseInt(configDict.get("MINC_NUM_THREADS"));
         int startLineNum = Integer.parseInt(configDict.get("MINC_START_LINE_NUM"));
         String pruneKeepModifyRepeatedQueries = configDict.get("MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES");
-        boolean includeSelOpConst = Boolean.parseBoolean(configDict.get("MINC_SEL_OP_CONST"));
-        String dataset = configDict.get("MINC_DATASET");
+        includeSelOpConst = Boolean.parseBoolean(configDict.get("MINC_SEL_OP_CONST"));
+        dataset = configDict.get("MINC_DATASET");
         try {
             String line = null;
             String prevSessionID = null;
@@ -31,11 +36,10 @@ public class MinWindowQueryIntent {
 
             //uncomment the following when full run needs to happen on EC2 or on EN4119510L
             //	readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
-
-            String query = null;
-	/*		String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
-					+ "a.avl_agency_name =  '8\\b8164b0b579a1a3cde19a106c8e1fca8' AND t.trip_id =  '33\\94f574661cc4d7d3c40a333a0509fd4f' "
-					+ "AND c.start_date <= 1480475749583 AND c.end_date+1 >= 1480475749583";
+            String query = "SELECT distinct a.agency_id FROM m_agency a, m_calendar c, m_trip t WHERE c.agency_id = a.agency_id AND t.agency_id = a.agency_id AND "
+                           + "a.avl_agency_name =  '8\\b8164b0b579a1a3cde19a106c8e1fca8' AND t.trip_id =  '33\\94f574661cc4d7d3c40a333a0509fd4f' "
+                           + "AND c.start_date <= 1480475749583 AND c.end_date+1 >= 1480475749583";
+	/*
 			query = "select st.trip_id, st.stop_sequence, st.estimate_source, st.fullness, st.departure_time_hour, "
 					+ "st.departure_time_minute, s.stop_lat, s.stop_lon, t.direction_id, t.route_id, route.route_short_name "
 					+ "from m_stop AS s RIGHT JOIN m_stop_time AS st  ON st.agency_id = s.agency_id "
@@ -48,30 +52,36 @@ public class MinWindowQueryIntent {
 					+ "OR ((departure_time_hour * 60 + departure_time_minute) >= (4-5)  "
 					+ "AND (departure_time_hour * 60 + departure_time_minute) <= (5+10)))  "
 					+ "order by st.stop_sequence";
-			 query = "SELECT s.stop_id AS stop_id, s.stop_name, s.stop_lat, s.stop_lon, ceiling((h_distance(0.0,0.0,s.stop_lat,s.stop_lon)/1.29)/60) "
-			 		+ "AS walk_time  FROM m_stop s  WHERE s.stop_lat BETWEEN (1-2) AND (3+4)  AND s.agency_id = 5  AND s.stop_lon BETWEEN (6-7) AND (8+9)  "
-			 		+ "ORDER BY (((s.stop_lat-(10))+(s.stop_lon-(11))))";
-			 query = "SELECT id, message_title, message, destination_screen, stamp FROM m_messages WHERE (device = 1 OR device IS NULL) AND "
-			 		+ "(agency_id = 2 OR agency_id IS NULL) AND (device_id = 3 OR device_id IS NULL) AND (app_version = 4 OR app_version IS NULL) "
-			 		+ "AND (NOW() >= start_date OR start_date IS NULL) AND (NOW() < end_date OR end_date IS NULL) "
-			 		+ "AND (trigger_cond = 5 OR "
-			 		+ "trigger_cond IS NULL) AND (SELECT COUNT(*) FROM m_popup_user_log WHERE device_id = 6 AND "
-			 		+ "date_trunc( '3\\1533bfb25649bd25dd740b47c19b84e4', stamp) = 3) < 1ORDER BY num_conditions DESC LIMIT 1";
-			 query = "select nm.trip_id,nm.id AS message_id, nm.message, nm.timestamp, nm.category,a.firstname AS first_name, a.lastname AS last_name "
-				 		+ "from dv_notes_message nm, dv_account a, (SELECT dvNotes.trip_id, MAX(dvNotes.timestamp) AS maximum FROM dv_notes_message dvNotes WHERE "
-				 		+ "dvNotes.agency_id IN (select c.agency_id from m_agency c, m_agency d where c.agency_id_id=d.agency_id_id and d.agency_id=1) "
-				 		+ "AND dvNotes.trip_id IN ( '35\\89ad84e1a460f2041220847c65206b20', '33\\9a6cce223e3aa56cfc2128721095071b', "
-				 		+ "'34\\57c15fbbf86f09cc1453e35c8c89a357', '33\\4d266129b208b1d32a7d75b9b89ec5ea', '35\\cbd995b9084ac97bc03ef0e7695d4b8d', "
-				 		+ "'34\\d21fa0245cc37fec431d5591d6192e89')AND dvNotes.category= '4\\2da45b72d28efeb9a3954206d2ae2fa6' GROUP BY dvNotes.trip_id) "
-				 		+ "as nmmax WHERE nm.deleted IS NULL AND a.id=nm.user_id AND nm.trip_id= nmmax.trip_id AND nm.timestamp = nmmax.maximum "
-				 		+ "AND nm.agency_id IN (select c.agency_id from m_agency c, m_agency d where c.agency_id_id=d.agency_id_id and d.agency_id=2)";
+			 query = ;
 
-			//query = "SELECT a.agency_timezone FROM m_agency a WHERE a.agency_id = 80";
 	*/
-            query = "SELECT s.stop_id AS stop_id, s.stop_name, s.stop_lat, s.stop_lon, ceiling((h_distance(0.0,0.0,s.stop_lat,s.stop_lon)/1.29)/60) "
+            List<String> queryBatchs = Arrays.asList(
+                "SELECT s.stop_id AS stop_id, s.stop_name, s.stop_lat, s.stop_lon, ceiling((h_distance(0.0,0.0,s.stop_lat,s.stop_lon)/1.29)/60) "
+                + "AS walk_time  FROM m_stop s  WHERE s.stop_lat BETWEEN (1-2) AND (3+4)  AND s.agency_id = 5  AND s.stop_lon BETWEEN (6-7) AND (8+9)  "
+                + "ORDER BY (((s.stop_lat-(10))+(s.stop_lon-(11))))",
+                "SELECT id, message_title, message, destination_screen, stamp FROM m_messages WHERE (device = 1 OR device IS NULL) AND "
+                + "(agency_id = 2 OR agency_id IS NULL) AND (device_id = 3 OR device_id IS NULL) AND (app_version = 4 OR app_version IS NULL) "
+                + "AND (NOW() >= start_date OR start_date IS NULL) AND (NOW() < end_date OR end_date IS NULL) "
+                + "AND (trigger_cond = 5 OR "
+                + "trigger_cond IS NULL) AND (SELECT COUNT(*) FROM m_popup_user_log WHERE device_id = 6 AND "
+                + "date_trunc( '3\\1533bfb25649bd25dd740b47c19b84e4', stamp) = 3) < 1ORDER BY num_conditions DESC "
+                + "LIMIT 1",
+                "select nm.trip_id,nm.id AS message_id, nm.message, nm.timestamp, nm"
+                                              + ".category,a"
+                                              + ".firstname AS first_name, a.lastname AS last_name "
+                                              + "from dv_notes_message nm, dv_account a, (SELECT dvNotes.trip_id, MAX(dvNotes.timestamp) AS maximum FROM dv_notes_message dvNotes WHERE "
+                                              + "dvNotes.agency_id IN (select c.agency_id from m_agency c, m_agency d where c.agency_id_id=d.agency_id_id and d.agency_id=1) "
+                                              + "AND dvNotes.trip_id IN ( '35\\89ad84e1a460f2041220847c65206b20', '33\\9a6cce223e3aa56cfc2128721095071b', "
+                                              + "'34\\57c15fbbf86f09cc1453e35c8c89a357', '33\\4d266129b208b1d32a7d75b9b89ec5ea', '35\\cbd995b9084ac97bc03ef0e7695d4b8d', "
+                                              + "'34\\d21fa0245cc37fec431d5591d6192e89')AND dvNotes.category= '4\\2da45b72d28efeb9a3954206d2ae2fa6' GROUP BY dvNotes.trip_id) "
+                                              + "as nmmax WHERE nm.deleted IS NULL AND a.id=nm.user_id AND nm.trip_id= nmmax.trip_id AND nm.timestamp = nmmax.maximum "
+                                              + "AND nm.agency_id IN (select c.agency_id from m_agency c, m_agency d "
+                                                     + "where c.agency_id_id=d.agency_id_id and d.agency_id=2)",
+            "SELECT s.stop_id AS stop_id, s.stop_name, s.stop_lat, s.stop_lon, ceiling((h_distance(0.0,0.0,s.stop_lat,s.stop_lon)/1.29)/60) "
                     + "AS walk_time  FROM m_stop s  WHERE s.stop_lat BETWEEN (1-2) AND (3+4)  AND s.agency_id = 5  AND s.stop_lon BETWEEN (6-7) AND (8+9)  "
-                    + "ORDER BY (((s.stop_lat-(10))+(s.stop_lon-(11))))";
-            String query1 = "SELECT a.agency_timezone FROM m_agency a WHERE a.agency_id = 80";
+                    + "ORDER BY (((s.stop_lat-(10))+(s.stop_lon-(11))))",
+            "SELECT a.agency_timezone FROM m_agency a WHERE a.agency_id = 80"
+            );
 //            query = "SELECT M.*, C.`option`, MIN(C.id) as component FROM jos_menu AS M LEFT JOIN jos_components AS C ON M.componentid = C.id "
 //                    + "and M.name = C.name and M.ordering = C.ordering WHERE M.published = 1 and M.params=C.params GROUP BY M.sublevel HAVING M.lft = 2 "
 //                    + "ORDER BY M.sublevel, M.parent, M.ordering";
@@ -104,45 +114,47 @@ public class MinWindowQueryIntent {
             // string value translate to bitset
             String queryIntent=fragmentObj.getIntentBitVector();
             BitSet minbatchQueryBitSets = new BitSet(queryIntent.length());
-            int maxLen=queryIntent.length();
-            System.out.println(queryIntent.length()+" bitset length:"+minbatchQueryBitSets.length());
-            minbatchQueryBitSets=updateMinBitSet(minbatchQueryBitSets, queryIntent);
-            System.out.println("before:"+bitsetToString(minbatchQueryBitSets,maxLen));
-            MINCFragmentIntent fragmentObj1 = new MINCFragmentIntent(query1, schParse, includeSelOpConst, dataset);
-            boolean validQuery1 = fragmentObj1.parseQueryAndCreateFragmentVectors();
-            if(validQuery1) {
-                fragmentObj1.printIntentVector();
-                fragmentObj1.writeIntentVectorToTempFile(query);
+            int maxLen = queryIntent.length();
+            System.out.println("before:"+toString(minbatchQueryBitSets,maxLen));
+
+            for(String tempquery:queryBatchs){
+                appendQueryToQueryIntentBatch(tempquery, minbatchQueryBitSets, maxLen);
             }
-            String queryIntent1=fragmentObj1.getIntentBitVector();
-            minbatchQueryBitSets=updateMinBitSet(minbatchQueryBitSets, queryIntent1);
+
             //print bitset
-            System.out.println("update:"+bitsetToString(minbatchQueryBitSets,maxLen));
+            System.out.println("update:"+toString(minbatchQueryBitSets,maxLen));
             System.out.println(fragmentObj.getIntentBitVector().length()+"bitset length:"+minbatchQueryBitSets.length());
         } catch(Exception e) {
             e.printStackTrace();
         }
     }
+    public static String appendQueryToQueryIntentBatch(String query, BitSet minbatchQueryBitSets,int size) throws Exception
+    {
+        MINCFragmentIntent fragmentObj1 = new MINCFragmentIntent(query, schParse, includeSelOpConst, dataset);
+        fragmentObj1.parseQueryAndCreateFragmentVectors();
+        String queryIntent1=fragmentObj1.getIntentBitVector();
+        minbatchQueryBitSets=updateMinBitSet(minbatchQueryBitSets, queryIntent1);
+        return toString(minbatchQueryBitSets,size);
+    }
     public static BitSet updateMinBitSet(BitSet minBatchBitSet, String queryIntent) {
         for(int i = 0; i < queryIntent.length(); i++) {
-            if(queryIntent.charAt(i) == '1'){
-                minBatchBitSet.set(i, true);
-            }else{
-                minBatchBitSet.set(i, false);
+            int bitValue = Character.getNumericValue(queryIntent.charAt(i));
+            // 如果字符是'1'，则将对应的位设置为true
+            if (bitValue == 1) {
+                minBatchBitSet.set(i);
             }
+
         }
         return minBatchBitSet;
     }
-    public static String bitsetToString(BitSet bitSet,int maxLen) {
-        StringBuilder sb = new StringBuilder();
-        for(int i = 0; i < bitSet.length(); i++) {
-            sb.append(bitSet.get(i) ? "1" : "0");
+    public static String toString(BitSet b, int size) throws Exception{
+        String to_return = "";
+        for(int i=0; i<size; i++) {
+            if(b.get(i))
+                to_return+="1";
+            else
+                to_return+="0";
         }
-        if(sb.length() < maxLen) {
-            for(int i = sb.length(); i < maxLen; i++) {
-                sb.append("0");
-            }
-        }
-        return sb.toString();
+        return to_return;
     }
 }
