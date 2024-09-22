@@ -853,7 +853,7 @@ public class MINCFragmentIntent{
 		//System.out.println("this.havingBitMap: "+this.havingBitMap+", length: "+this.havingBitMap.toCharArray().length);
 		createBitVectorForLimit();
 		//System.out.println("this.limitBitMap: "+this.limitBitMap+", length: "+this.limitBitMap.toCharArray().length);
-		createBitVectorForJoin();
+//		createBitVectorForJoin();
 		//System.out.println("this.joinPredBitMap: "+this.joinPredicatesBitMap+", length: "+this.joinPredicatesBitMap.toCharArray().length);
 		if(this.includeSelOpConst) {
 			createBitVectorForSelPredOps();

@@ -11,6 +11,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -48,13 +50,31 @@ public class ExcelReader
         System.out.println(dbName + ": " + tableNames.size());
       });
       // 打印两个map表名及其字段和类型
-      System.out.println("tableCols count:" + tableColsMap.size());
+      System.out.println("table count:" + tableColsMap.size());
+      List<String> tableAndCols = new ArrayList<>();
       tableColsMap.forEach((tableName, cols) -> {
         System.out.println(tableName + ": " + cols.size());
+        cols.stream().forEach(col -> {
+          tableAndCols.add(tableName + "." + col);
+        });
       });
-      tableColTypesMap.forEach((tableName, types) -> {
-        System.out.println(tableName + ": " + types.size());
-      });
+      Collections.sort(tableAndCols);
+      writeTableColsBitToFile(tableAndCols);
+
+    }
+    catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+
+  private static void writeTableColsBitToFile(List<String> tableAndCols)
+  {
+    String fileName = "ApmColBitPos";
+    File outputFile = new File(getOutputDir(), fileName + ".txt");
+    try (FileWriter writer = new FileWriter(outputFile)) {
+      for (int i = 0; i < tableAndCols.size(); i++) {
+        writer.write(tableAndCols.get(i) + ":" + i + "\n");
+      }
     }
     catch (IOException e) {
       e.printStackTrace();
@@ -91,7 +111,7 @@ public class ExcelReader
       String[] dbtablevalues = cellValue.substring(1, cellValue.length() - 1).split("\\],\\[");
       for (String values : dbtablevalues) {
         values = values.replaceAll("[\\['\"]", ""); // 移除字符串中的 ['"] 和 []
-        System.out.println("line values:" + values);
+//        System.out.println("line values:" + values);
         //继续按英文逗号划分得到db.table数组
         String[] dbAndTables = values.split(",");
         for (String dbTable : dbAndTables) {
@@ -103,6 +123,9 @@ public class ExcelReader
           String dbName = parts[0];
           String tableName = parts[parts.length - 1];
           tablesMap.putIfAbsent(dbName, new LinkedHashSet<>());
+          if (tableName.contains("_cluster")) {
+            tableName = tableName.substring(0, tableName.indexOf("_cluster"));
+          }
           tablesMap.get(dbName).add(tableName);
         }
       }
@@ -117,6 +140,7 @@ public class ExcelReader
     // 写入文件
     tablesMap.forEach((dbName, tableNames) -> {
       File outputFile = new File(getOutputDir(), dbName + ".txt");
+      tableIndex.set(0);
       try (FileWriter writer = new FileWriter(outputFile)) {
         tableNames.forEach(tableName -> {
           try {

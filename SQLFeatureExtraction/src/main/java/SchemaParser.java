@@ -263,10 +263,10 @@ public class SchemaParser {
 				readInto(configDict.get(key),this.MINCColTypes);
 			else if(key.equals("MINC_COL_BIT_POS"))
 				readIntoMincColBitPos(configDict.get(key));
-			else if(key.equals("MINC_JOIN_PREDS"))
-				readIntoJoinPredDict(configDict.get(key),this.MINCJoinPreds);
-			else if(key.equals("MINC_JOIN_PRED_BIT_POS"))
-				this.MINCJoinPredBitCount = readIntoBitPosDict(configDict.get(key),this.MINCJoinPredBitPos);
+//			else if(key.equals("MINC_JOIN_PREDS"))
+//				readIntoJoinPredDict(configDict.get(key),this.MINCJoinPreds);
+//			else if(key.equals("MINC_JOIN_PRED_BIT_POS"))
+//				this.MINCJoinPredBitCount = readIntoBitPosDict(configDict.get(key),this.MINCJoinPredBitPos);
 			else if(key.equals("MINC_SEL_PRED_COLS"))
 				readIntoSelPredColDict(configDict.get(key));
 			else if(key.equals("MINC_SEL_PRED_COL_RANGE_BINS"))
