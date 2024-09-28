@@ -16,7 +16,9 @@ public class DDLParser
 
   public static void main(String[] args)
   {
-    String ddl = "/* ddl_entry=query-0000010389 */ CREATE TABLE IF NOT EXISTS pmone_c9d7321d2e.dwm_request_cluster UUID '0e3ea76b-b206-40e1-9c99-fe5691d868ab' (\n`ts` DateTime64(3), `type` LowCardinality(String), `group` String, `appid` LowCardinality(String), `appsysid` LowCardinality(String), `agent` LowCardinality(String), `service_type` Nullable(UInt16), `path` String, `method` String, `root_appid` LowCardinality(String), `pappid` LowCardinality(Nullable(String)), `pappsysid` LowCardinality(Nullable(String)), `papp_type` Nullable(UInt16), `pagent` LowCardinality(Nullable(String)), `pagent_ip` LowCardinality(Nullable(String)), `uevent_model` LowCardinality(Nullable(String)), `uevent_id` Nullable(String), `user_id` Nullable(String), `session_id` Nullable(String), `host` Nullable(String), `ip_addr` Nullable(String), `province` LowCardinality(Nullable(String)), `city` LowCardinality(Nullable(String)), `page_id` Nullable(String), `page_group` Nullable(String), `status` UInt16, `err_4xx` Nullable(UInt64), `err_5xx` Nullable(UInt64), `status_code` Int16, `tag` LowCardinality(Nullable(String)), `code` String, `is_model` Bool, `exception` UInt64, `biz` UInt64, `fail` UInt64, `httperr` UInt64, `neterr` UInt64, `err` UInt64, `tolerated` UInt64, `frustrated` UInt64, `dur` UInt64) ENGINE = Distributed(ch_cluster_all, pmone_c9d7321d2e, dwm_request)";
+    String ddl = "/* ddl_entry=query-0000010389 */ CREATE TABLE IF NOT EXISTS" +
+            " pmone_c9d7321d2e.dwm_request_cluster UUID '0e3ea76b-b206-40e1-9c99-fe5691d868ab' " +
+            "\n(\n`ts` DateTime64(3), `type` LowCardinality(String), `group` String, `appid` LowCardinality(String), `appsysid` LowCardinality(String), `agent` LowCardinality(String), `service_type` Nullable(UInt16), \n`path` String, `method` String, `root_appid` LowCardinality(String), `pappid` LowCardinality(Nullable(String)), `pappsysid` LowCardinality(Nullable(String)), `papp_type` Nullable(UInt16), `pagent` LowCardinality(Nullable(String)), `pagent_ip` LowCardinality(Nullable(String)), `uevent_model` LowCardinality(Nullable(String)), `uevent_id` Nullable(String), `user_id` Nullable(String), `session_id` Nullable(String), `host` Nullable(String), `ip_addr` Nullable(String), `province` LowCardinality(Nullable(String)), `city` LowCardinality(Nullable(String)), `page_id` Nullable(String), `page_group` Nullable(String), `status` UInt16, `err_4xx` Nullable(UInt64), `err_5xx` Nullable(UInt64), `status_code` Int16, `tag` LowCardinality(Nullable(String)), `code` String, `is_model` Bool, `exception` UInt64, `biz` UInt64, `fail` UInt64, `httperr` UInt64, `neterr` UInt64, `err` UInt64, `tolerated` UInt64, `frustrated` UInt64, `dur` UInt64) ENGINE = Distributed(ch_cluster_all, pmone_c9d7321d2e, dwm_request)";
     Map<String, List<String>> tableColsMap = new HashMap<>();
     Map<String, List<String>> tableColTypesMap = new HashMap<>();
     parseDDL(ddl, tableColsMap, tableColTypesMap);
@@ -48,14 +50,14 @@ public class DDLParser
       }
       if (columnsMatcher.find()) {
         String columnsStr = columnsMatcher.group(0);
-        System.out.println("columnsStr:" + columnsStr);
+//        System.out.println("columnsStr:" + columnsStr);
         int end = columnsStr.lastIndexOf(") ENGINE") == -1
                   ? columnsStr.lastIndexOf(")")
                   : columnsStr.lastIndexOf(") ENGINE");
         columnsStr = columnsStr.substring(columnsStr.indexOf("(") + 1, end);
         //columns按逗号分隔
         columnsStr = columnsStr.replaceAll("`", "");
-        columnsStr.replaceAll("\n", "");
+        columnsStr = columnsStr.replace("\n", "");
         System.out.println("clean columnsStr:" + columnsStr);
         String[] colTypes = columnsStr.split(",");
         List<String> columnNames = new ArrayList<>();
@@ -67,7 +69,7 @@ public class DDLParser
             System.out.println("filter invalid entry:" + Arrays.toString(colTypeArr) + ",length:" + colTypeArr.length);
             continue;
           }
-          System.out.println("column&type entry:" + entry);
+//          System.out.println("column&type entry:" + entry);
           String columnName = colTypeArr[0];
           String columnType = colTypeArr[1].replaceAll("(\\(.*?\\))?", "");
 

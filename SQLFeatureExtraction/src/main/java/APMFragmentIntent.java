@@ -6,7 +6,10 @@ import net.sf.jsqlparser.statement.delete.Delete;
 import net.sf.jsqlparser.statement.insert.Insert;
 import net.sf.jsqlparser.statement.select.Select;
 import net.sf.jsqlparser.statement.update.Update;
+import org.apache.calcite.avatica.util.Quoting;
 import org.apache.calcite.config.Lex;
+import org.apache.calcite.config.NullCollation;
+import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.dialect.ClickHouseSqlDialect;
 import org.apache.calcite.sql.parser.SqlParseException;
@@ -14,6 +17,9 @@ import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.parser.impl.SqlParserImpl;
 import org.apache.calcite.sql.util.SqlString;
 import org.apache.calcite.sql.validate.SqlConformanceEnum;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
@@ -21,22 +27,17 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import reader.DDLParser;
+import reader.ExcelReader;
+import reader.StringCleaner;
 import toolsForMetrics.Global;
 import toolsForMetrics.Pair;
 import toolsForMetrics.Util;
 
-import java.io.BufferedReader;
-import java.io.BufferedWriter;
-import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -90,6 +91,8 @@ public class APMFragmentIntent
   SchemaParser schParse; // used for retrieval of schema related information
   boolean includeSelOpConst; // decide whether or not to include selOpConst
   String dataset; // dataset info
+
+  List<String> specialColumns = Arrays.asList("group1");
 
   public APMFragmentIntent(String originalSQL, SchemaParser schParse, boolean includeSelOpConst, String dataset)
       throws Exception
@@ -286,9 +289,13 @@ public class APMFragmentIntent
     HashMap<String, Integer> MINCTables = this.schParse.fetchMINCTables();
     BitSet b = new BitSet(MINCTables.size());
     for (Table tab : this.tables) {
-      String tableName = this.cleanString(tab.getName().toLowerCase());
-      int tableIndex = MINCTables.get(tableName);
-      b.set(tableIndex);
+      try {
+        String tableName = this.cleanString(tab.getName().toLowerCase());
+        int tableIndex = MINCTables.get(tableName);
+        b.set(tableIndex);
+      }catch (Exception e) {
+        e.printStackTrace();
+      }
     }
     this.tableBitMap = toString(b, MINCTables.size());
     appendToBitVectorString(this.tableBitMap);
@@ -307,6 +314,7 @@ public class APMFragmentIntent
 
   public static String[] cleanColArrayString(String colArray) throws Exception
   {
+    colArray = colArray.strip();
     colArray = colArray.replace("[", "");
     colArray = colArray.replace("]", "");
     colArray = colArray.replaceAll("'", "");
@@ -410,37 +418,18 @@ public class APMFragmentIntent
     }
     return tableColumnDict;
   }
-
-  /*	public String createBitVectorForOpColSetOld(HashSet<Column> colSet) throws Exception {
-      String b = "";
-      if (colSet.size()==1 && colSet.iterator().next().toString().equals("*")) {
-          b = setAllColumns();
-          appendToBitVectorString(b);
-          return b;
-      }
-      HashMap<String,ArrayList<String>> tableColumnDict = createTableColumnDict(colSet);
-      HashMap<String,Integer> schemaTables = this.schParse.fetchMINCTables();
-    //	HashSet<String> tableNames = new HashSet<String>(schemaTables.keySet());
-      for(String tableName:schemaTables.keySet()) {
-        String bitMapPerTable;
-        if(tableColumnDict.containsKey(tableName)) {
-          bitMapPerTable = this.setColumnsFromTable(tableName, tableColumnDict.get(tableName));
-        }
-        else
-          bitMapPerTable = this.setColumnsFromTable(tableName, null);
-        b+=bitMapPerTable;
-      }
-      this.appendToBitVectorString(b);
-      return b;
-    }
-  */
   public BitSet setAllColumnsFromTable(String tableName, BitSet bitVector) throws Exception
   {
     HashMap<String, String> MINCColumns = this.schParse.fetchMINCColumns();
     String[] colArray = cleanColArrayString(MINCColumns.get(tableName));
     for (String colName : colArray) {
-      int bitPos = this.schParse.fetchMINCColBitPos().get(tableName + "." + colName);
-      bitVector.set(bitPos);
+      try {
+        int bitPos = this.schParse.fetchMINCColBitPos().get(tableName + "." + colName);
+        bitVector.set(bitPos);
+      }catch (Exception e) {
+        e.printStackTrace();
+      }
+
     }
     return bitVector;
   }
@@ -474,6 +463,9 @@ public class APMFragmentIntent
           String fullColName = tableName + "." + colName;
           int colBitPos;
           try {
+            if(colAliases.containsKey(tableName + ".`" + colName+"`")){
+              fullColName=colAliases.get(tableName + ".`" + colName+"`").getColumnName().toLowerCase();
+            }
             colBitPos = schemaCols.get(fullColName);
             bitVector.set(colBitPos);
           }
@@ -501,7 +493,7 @@ public class APMFragmentIntent
     }
   }
 
-  public HashMap<HashSet<String>, ArrayList<HashSet<String>>> convertColumnListToStringSet() throws Exception
+  /*public HashMap<HashSet<String>, ArrayList<HashSet<String>>> convertColumnListToStringSet() throws Exception
   {
     HashMap<HashSet<String>, ArrayList<HashSet<String>>> joinPredDictQuery = new HashMap<HashSet<String>, ArrayList<HashSet<String>>>();
     for (ArrayList<Column> colPair : this.joinPredicates) {
@@ -523,7 +515,7 @@ public class APMFragmentIntent
       joinPredDictQuery.get(tableNamePair).add(columnNamePair);
     }
     return joinPredDictQuery;
-  }
+  }*/
 
   public int locateHashSetInValues(HashSet<String> querySet, ArrayList<HashSet<String>> valueList) throws Exception
   {
@@ -640,36 +632,6 @@ public class APMFragmentIntent
     this.joinPredicatesBitMap = b;
   }
 
-  /*	public void createBitVectorForJoinDeprecated() throws Exception{
-      //key is tablePair and value is a list of column pairs
-      HashMap<HashSet<String>,ArrayList<HashSet<String>>> joinPredDictQuery = convertColumnListToStringSet();
-      HashMap<String,ArrayList<toolsForMetrics.Pair<String,String>>> joinPredDictSchema = this.schParse.fetchMINCJoinPreds();
-      HashMap<String,toolsForMetrics.Pair<Integer,Integer>> joinPredBitPosSchema = this.schParse.fetchMINCJoinPredBitPos();
-      HashSet<Integer> bitPosToSet = new HashSet<Integer>();
-      for(HashSet<String> tablePairQuery : joinPredDictQuery.keySet()) {
-        String dictKey = locateHashSetInKeys(tablePairQuery, new HashSet<String>(joinPredDictSchema.keySet()));
-        ArrayList<HashSet<String>> joinPredListQuery = joinPredDictQuery.get(tablePairQuery);
-        ArrayList<toolsForMetrics.Pair<String,String>> joinPredListSchema = joinPredDictSchema.get(dictKey);
-        toolsForMetrics.Pair<Integer,Integer> startEndBitPos = joinPredBitPosSchema.get(dictKey);
-        for(HashSet<String> joinPredQuery : joinPredListQuery) {
-          int joinPredSchemaIndex = 0;
-          for(toolsForMetrics.Pair<String,String> joinPredSchema : joinPredListSchema) {
-            if(compareJoinPreds(joinPredSchema, joinPredQuery)) {
-              int bitIndex = startEndBitPos.getKey()+joinPredSchemaIndex;
-              bitPosToSet.add(bitIndex);
-            }
-            joinPredSchemaIndex++;
-          }
-        }
-      }
-      BitSet joinPredIntentVector = new BitSet(this.schParse.fetchMINCJoinPredBitCount());
-      for(int bitIndex:bitPosToSet) {
-        joinPredIntentVector.set(bitIndex);
-      }
-      this.appendToBitVectorString(toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount()));
-      this.joinPredicatesBitMap = toString(joinPredIntentVector,this.schParse.fetchMINCJoinPredBitCount());
-    }
-  */
   public Pair<String, String> replaceColAliases(String tableName, String colName) throws Exception
   {
     Pair<String, String> tabColName = new Pair<>(tableName, colName.toLowerCase());
@@ -926,13 +888,13 @@ public class APMFragmentIntent
     //System.out.println("this.MAXBitMap: "+this.MAXBitMap+", length: "+this.MAXBitMap.toCharArray().length);
     this.SUMBitMap = createBitVectorForOpColSet(this.SUMColumns);
     //System.out.println("this.SUMBitMap: "+this.SUMBitMap+", length: "+this.SUMBitMap.toCharArray().length);
-    this.COUNTBitMap = createBitVectorForOpColSet(this.COUNTColumns);
+//    this.COUNTBitMap = createBitVectorForOpColSet(this.COUNTColumns);
     //System.out.println("this.COUNTBitMap: "+this.COUNTBitMap+", length: "+this.COUNTBitMap.toCharArray().length);
     this.selectionBitMap = createBitVectorForOpColSet(this.selectionColumns);
     //System.out.println("this.selectionBitMap: "+this.selectionBitMap+", length: "+this.selectionBitMap.toCharArray().length);
     this.groupByBitMap = createBitVectorForOpColSet(this.groupByColumns);
     //System.out.println("this.groupByBitMap: "+this.groupByBitMap+", length: "+this.groupByBitMap.toCharArray().length);
-    this.orderByBitMap = createBitVectorForOpColSet(this.orderByColumns);
+//    this.orderByBitMap = createBitVectorForOpColSet(this.orderByColumns);
     //System.out.println("this.orderByBitMap: "+this.orderByBitMap+", length: "+this.orderByBitMap.toCharArray().length);
     this.havingBitMap = createBitVectorForOpColSet(this.havingColumns);
     //System.out.println("this.havingBitMap: "+this.havingBitMap+", length: "+this.havingBitMap.toCharArray().length);
@@ -1339,7 +1301,7 @@ public class APMFragmentIntent
 //			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
 //		}
 //		String configFile = homeDir+"/var/data/MINC/InputOutput/MincJavaConfig.txt";
-    String configFile = "/home/xhh/data/APM/Input/ApmJavaConfig.txt";
+    String configFile = "C:\\buaa\\data\\APM\\Input/ApmJavaConfig.txt";
     SchemaParser schParse = new SchemaParser();
     schParse.fetchSchema(configFile);
     HashMap<String, String> configDict = schParse.getConfigDict();
@@ -1351,38 +1313,41 @@ public class APMFragmentIntent
       //	readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 
       List<String> querys = Arrays.asList(
-          "SELECT sum(`err`) AS `err_##RESP##`, sum(`fail`) AS `fail_##RESP##`, sum(`frustrated`) AS `frustrated_##RESP##`, "
+          /*"SELECT sum(`err`) AS `err_##RESP##`, sum(`fail`) AS `fail_##RESP##`, sum(`frustrated`) AS `frustrated_##RESP##`, "
           + "sum(`tolerated`) AS `slow_##RESP##`, count() AS `total_##RESP##` FROM `dwm_request`"
           + " WHERE (`appsysid` = '2d2c5d75-0079-4e66-9db6-c6f42fc3b333')  AND (`ts` <= toDateTime64(1684399019.999, "
           + "3)) "
           + "AND (`ts` >= toDateTime64(1684339200., 3))",
-          "SELECT count() AS `total_##RESP##`, `name` FROM `pmone_0d5de51f17`.`dwm_exception` WHERE (`appid` = 'app-member-activity-xc\\') AND (`ts` <= toDateTime64(1684425599.999, 3)) AND (`ts` >= toDateTime64(1684339200., 3)) GROUP BY `name` LIMIT 0, 5"
+          "SELECT count() AS `total_##RESP##`, `name` FROM `dwm_exception` WHERE (`appid` = 'app-member-activity-xc') " +
+                  "AND (`ts` <= toDateTime64(1684425599.999, 3)) AND (`ts` >= toDateTime64(1684339200., 3)) GROUP BY `name` LIMIT 0, 5",*/
+              "SELECT COUNT(*) AS total_RESP, DATE_SUB(ts, INTERVAL MOD(UNIX_TIMESTAMP(ts), 7 * 24 * 60 * 60) SECOND) AS ts_RESP FROM dwm_request WHERE appid = 'pro-api-g10-xingyun' AND ts <= FROM_UNIXTIME(1684487339.999) AND ts >= FROM_UNIXTIME(1677834480.000) GROUP BY ts_RESP ORDER BY ts_RESP ASC",
+          "SELECT count() AS total_RESP, toStartOfInterval(ts, INTERVAL 7 day) AS ts_RESP FROM dwm_request WHERE appid = 'pro-api-g10-xingyun' AND ts <= toDateTime64(1684487339.999, 3) AND ts >= toDateTime64(1677834480.000, 3) GROUP BY ts_RESP ORDER BY ts_RESP ASC"
       );
       for (String query : querys) {
+        System.out.println(query);
         String queryIntent = getQueryIntent(query, schParse, includeSelOpConst);
         System.out.println(queryIntent.length() + "," + queryIntent);
       }
 
-      String tsvFilePath = "/home/xhh/data/APM/clickhouse_sql_1.xlsx"; // TSV 文件路径
-      try (FileInputStream file = new FileInputStream(tsvFilePath);
-           Workbook workbook = new XSSFWorkbook(file)) {
+      String tsvFilePath = "C:/buaa/data/APM/Input/ApmQuerys.tsv"; // TSV 文件路径
+      try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
+        CSVParser csvParser = new CSVParser(reader, CSVFormat.TDF.withFirstRecordAsHeader());
+        Iterable<CSVRecord> records = csvParser.getRecords();
 
-        Sheet sheet = workbook.getSheetAt(0);
-        Map<String, Set<String>> tablesMap = new HashMap<>();
-        Map<String, List<String>> tableColsMap = new HashMap<>();
-        Map<String, List<String>> tableColTypesMap = new HashMap<>();
-        for (Row row : sheet) {
-          Cell cell = row.getCell(2);
-          if (cell.getCellType() == CellType.STRING) {
-            String cellValue = cell.getStringCellValue();
-            if ("query".equals(cellValue)) {
-              return;
-            }
-            DDLParser.parseDDL(cellValue, tableColsMap, tableColTypesMap);
+        // 处理标题行
+        List<String> headers = csvParser.getHeaderNames();
+        System.out.println("Headers: " + headers);
+        int count=0;
+        for (CSVRecord record : records) {
+          String query = record.get("query");
+          if(!ExcelReader.filterSql(query)){
+             continue;
           }
+          count++;
+          String queryIntent = getQueryIntent(query, schParse, includeSelOpConst);
+          System.out.println(count+","+queryIntent.length() + "," + queryIntent);
         }
-      }
-      catch (IOException e) {
+      } catch (Exception e) {
         e.printStackTrace();
       }
     }
@@ -1394,23 +1359,39 @@ public class APMFragmentIntent
   public static String getQueryIntent(String query, SchemaParser schParse, boolean includeSelOpConst)
       throws Exception
   {
-    query = query.replaceAll("`", "");
-    query = query.replaceAll("#", "");
-    query = query.replaceAll("\\\\", "");
-
+    query=StringCleaner.cleanString(query);
+    query=StringCleaner.correctQuery(query);
+    System.out.println("clean query:"+query);
+//    SqlParser.Config config = SqlParser.configBuilder()
+//                                       .setLex(Lex.JAVA)
+//                                       .setParserFactory(SqlParserImpl.FACTORY)
+//                                       .setConformance(SqlConformanceEnum.MYSQL_5)
+//                                       .build();
+//    SqlDialect clickHouseDialect = new ClickHouseDialect();
+    // 创建 Calcite SqlParser.Config 配置对象
     SqlParser.Config config = SqlParser.configBuilder()
-                                       .setLex(Lex.MYSQL)
-                                       .setParserFactory(SqlParserImpl.FACTORY)
-                                       .setConformance(SqlConformanceEnum.MYSQL_5)
-                                       .build();
+            .setLex(Lex.JAVA) // ClickHouse方言可能需要LEX设置为Lex.JAVA
+            .setParserFactory(SqlParserImpl.FACTORY)
+            .setConformance(SqlConformanceEnum.LENIENT)
+            .setQuoting(Quoting.BACK_TICK)
+//            .setConformance(ClickHouseSqlDialect.DEFAULT.getConformance()) // 使用 ClickHouse 方言的一致性规则
+            .build();
     // 创建解析器
     SqlParser parser = SqlParser.create(query, config);
-    // 解析sql
-    SqlNode sqlNode = parser.parseQuery(query);
-    // 还原某个方言的SQL
-    SqlString sqlString = sqlNode.toSqlString(ClickHouseSqlDialect.DEFAULT);
-    query = sqlString.getSql();
-    System.out.println(query);
+    try {
+      // 解析sql
+      SqlNode sqlNode = parser.parseQuery(query);
+      SqlDialect.Context MY_CONTEXT = SqlDialect.EMPTY_CONTEXT
+              .withDatabaseProduct(SqlDialect.DatabaseProduct.CLICKHOUSE)
+//              .withIdentifierQuoteString("`")
+              .withNullCollation(NullCollation.LOW);
+      // 还原某个方言的SQL
+      SqlString sqlString = sqlNode.toSqlString(new ClickHouseSqlDialect(MY_CONTEXT));
+      query = sqlString.getSql();
+      System.out.println("clickhouse query:"+query);
+    }catch (Exception e){
+      e.printStackTrace();
+    }
 
     APMFragmentIntent fragmentObj = new APMFragmentIntent(query, schParse, includeSelOpConst, "APM");
     boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();

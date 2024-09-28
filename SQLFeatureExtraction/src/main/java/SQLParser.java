@@ -783,7 +783,7 @@ public class SQLParser{
 					if (sss instanceof Function){
 						Function f=(Function)sss;  		
 						String fName=f.getName();
-						if (fName.equals("max"))
+						if (fName.equals("max")||fName.equals("maxornull"))
 							addColumnToAggrProj(sss, MAXColumns, selectSchema, colAlias);
 						else if(fName.equals("min"))
 							addColumnToAggrProj(sss, MINColumns, selectSchema, colAlias);
@@ -792,6 +792,16 @@ public class SQLParser{
 						else if (fName.equals("avg"))
 							addColumnToAggrProj(sss, AVGColumns, selectSchema, colAlias);
 						else if (fName.equals("count"))
+							/*if(selectSchema.toString().equals("")){
+								Column column = new Column();
+								column.setTable(this.curLevelTables.get(0));
+								column.setColumnName("*");
+								f.setAllColumns(true);
+
+								COUNTColumns.add(column);
+								sss=f;
+								selectSchema = Util.processExpression(sss);
+							}*/
 							addColumnToAggrProj(sss, COUNTColumns, selectSchema, colAlias);
 					}
 					addToColSet(selectSchema, colAlias, this.projectionColumns); //both non-aggregate & aggregate columns are also added to the projection list
@@ -956,171 +966,7 @@ public class SQLParser{
 			Expression whereExpr = d1.getWhere();
 			parseWhere(whereExpr);
 		}
-	/*	else {
-			System.err.println(stmt1 + " is not a Select/Insert/Update/Delete query");
-		}
-		System.out.println("TABLES: "+ this.tables);
-		System.out.println("TABLE ALIASES: "+ Global.tableAlias);
-		System.out.println("GROUP BY: "+ this.groupByColumns);
-		System.out.println("SELECT(WHERE): "+this.selectionColumns);
-		System.out.println("PROJECT: "+this.projectionColumns);
-		System.out.println("ORDER BY: "+this.orderByColumns);
-		System.out.println("HAVING: "+this.havingColumns);
-		System.out.println("JOIN: "+this.joinPredicates);
-		System.out.println("LIMIT: "+this.limitList);
-		System.out.println("MAX: "+this.MAXColumns);
-		System.out.println("MIN: "+this.MINColumns);
-		System.out.println("AVG: "+this.AVGColumns);
-		System.out.println("SUM: "+this.SUMColumns);
-		System.out.println("COUNT: "+this.COUNTColumns); */
 	}
 }
 
 
-/**** OLD CODE ***
-private void parseWhereOps(Expression where) {
-if(this.dataset.equals("MINC"))
-	parseMINCWhereOps(where);
-else if(this.dataset.equals("BusTracker"))
-	parseBusTrackerWhereOps(where);
-else {
-	System.out.println("Dataset does not Exist !!");
-	System.exit(0);
-}
-}
-
-private void parseBusTrackerWhereOps(Expression where) {
-if (where != null) {
-	// pop out the top iter
-	this.correct(where, tables);
-	//breaking selection operators with AND
-	List<Expression> selects = Util.processSelect(where);
-	assert selects.size()%2==0; // number of selects should be even because every where predicate is a binary expression
-	// here we obtain join predicates by counting that even numbered values are constants
-	// for instance, table.col1=table2.col2 will produce a column and a column, whereas table.col1=constant will produce a column and a constant
-	ArrayList<Schema> selectJoinSchemas = new ArrayList<Schema>();
-	for (int i = 0; i < selects.size(); i++) {
-		if(selects.get(i).toString().contains(" ")) { // for exprs like "colName IS NULL", this turns IS NULL into a constant and adds it in between
-			Schema selectJoinSchema = Util.processExpression(selects.get(i));
-			selectJoinSchemas.add(selectJoinSchema);
-			Schema constSchema = new Schema(); // for constant equivalent expression
-			selectJoinSchemas.add(constSchema);
-		} 
-		else if(selects.get(i).toString().contains("\"") || selects.get(i).toString().contains("\'") || selects.get(i) instanceof LongValue || selects.get(i) instanceof StringValue 
-				|| selects.get(i) instanceof DateValue || selects.get(i) instanceof TimestampValue || selects.get(i) instanceof DoubleValue || selects.get(i) instanceof TimeValue 
-				|| selects.get(i) instanceof NullValue) { // not a column but a string constant, numerical constants and single parentheses are already covered
-			Schema constSchema = new Schema(); // for constant equivalent expression
-			selectJoinSchemas.add(constSchema);
-		} 
-		else {
-			Schema selectJoinSchema = Util.processExpression(selects.get(i));
-			selectJoinSchemas.add(selectJoinSchema);
-		}
-	}
-	for (int schemaIndex=0; schemaIndex<selectJoinSchemas.size(); schemaIndex+=2) {
-		//do checks at even junctures
-		// check if both the entries at j and j+1 are columns
-		if (selectJoinSchemas.get(schemaIndex).getValues().size() > 0 && selectJoinSchemas.get(schemaIndex+1).getValues().size() > 0) {
-			ArrayList<Column> joinPredicate = new ArrayList<Column>();
-			for(int tempIndex=schemaIndex; tempIndex<schemaIndex+2; tempIndex++) {
-				for (int j = 0; j < selectJoinSchemas.get(tempIndex).getValues().size(); j++) {
-					joinPredicate.add(new ExtendedColumn(selectJoinSchemas.get(tempIndex).getValues().get(j)));
-				}
-			}
-			this.joinPredicates.add(joinPredicate);
-		}
-		else {
-			for(int tempIndex=schemaIndex; tempIndex<schemaIndex+2; tempIndex++) {
-				for (int j = 0; j < selectJoinSchemas.get(tempIndex).getValues().size(); j++) {
-					this.selectionColumns.add(new ExtendedColumn(selectJoinSchemas.get(tempIndex).getValues().get(j)));
-				}
-			}
-		}
-	}
-}
-}
-
-private void parseMINCWhereOps(Expression where) {
-if (where != null) {
-	// pop out the top iter
-	this.correct(where, tables);
-	//breaking selection operators with AND
-	List<Expression> selects = Util.processSelect(where);
-	assert selects.size()%2==0; // number of selects should be even because every where predicate is a binary expression
-	// here we obtain join predicates by counting that even numbered values are constants
-	// for instance, table.col1=table2.col2 will produce a column and a column, whereas table.col1=constant will produce a column and a constant
-	ArrayList<Schema> selectJoinSchemas = new ArrayList<Schema>();
-	for (int i = 0; i < selects.size(); i++) {
-		if(selects.get(i).toString().contains(" ")) { // for exprs like "colName IS NULL", this turns IS NULL into a constant and adds it in between
-			Schema selectJoinSchema = Util.processExpression(selects.get(i));
-			selectJoinSchemas.add(selectJoinSchema);
-			Schema constSchema = new Schema(); // for constant equivalent expression
-			selectJoinSchemas.add(constSchema);
-		} 
-		else if(selects.get(i).toString().contains("\"")) { // not a column but a string constant, numerical constants and single parentheses are already covered
-			Schema constSchema = new Schema(); // for constant equivalent expression
-			selectJoinSchemas.add(constSchema);
-		} 
-		else {
-			Schema selectJoinSchema = Util.processExpression(selects.get(i));
-			selectJoinSchemas.add(selectJoinSchema);
-		}
-	}
-	for (int schemaIndex=0; schemaIndex<selectJoinSchemas.size(); schemaIndex+=2) {
-		//do checks at even junctures
-		// check if both the entries at j and j+1 are columns
-		if (selectJoinSchemas.get(schemaIndex).getValues().size() > 0 && selectJoinSchemas.get(schemaIndex+1).getValues().size() > 0) {
-			ArrayList<Column> joinPredicate = new ArrayList<Column>();
-			for(int tempIndex=schemaIndex; tempIndex<schemaIndex+2; tempIndex++) {
-				for (int j = 0; j < selectJoinSchemas.get(tempIndex).getValues().size(); j++) {
-					joinPredicate.add(new ExtendedColumn(selectJoinSchemas.get(tempIndex).getValues().get(j)));
-				}
-			}
-			this.joinPredicates.add(joinPredicate);
-		}
-		else {
-			for(int tempIndex=schemaIndex; tempIndex<schemaIndex+2; tempIndex++) {
-				for (int j = 0; j < selectJoinSchemas.get(tempIndex).getValues().size(); j++) {
-					this.selectionColumns.add(new ExtendedColumn(selectJoinSchemas.get(tempIndex).getValues().get(j)));
-				}
-			}
-		}
-	}
-}
-}
-
-private void parseJoinListOps(List<Join> joinlist, int queryOrder) {
-for (int i = 0; i < joinlist.size(); i++) {
-	consumeFromItem(joinlist.get(i).getRightItem(), tables, queryOrder);
-	
-	Expression sss = joinlist.get(i).getOnExpression();
-	//System.out.println(sss);
-	if (sss != null) {
-		// pop out the top iter
-		this.correct(sss, tables);
-		//breaking selection operators with AND
-		List<Expression> joins = Util.processSelect(sss);
-		ArrayList<Column> joinPredicate = null;
-		for (int j = 0; j < joins.size(); j++) {
-			if (j%2==0) {
-				if(joinPredicate != null && joinPredicate.size() == 2)
-					joinPredicates.add(joinPredicate);
-				else if(joinPredicate != null && joinPredicate.size() == 1)
-					selectionColumns.add(joinPredicate.get(0));
-				joinPredicate = new ArrayList<Column>();
-			}
-			Schema joinSchema = Util.processExpression(joins.get(j));
-			for (int k = 0; k < joinSchema.getValues().size(); k++) {							
-				joinPredicate.add(new ExtendedColumn(joinSchema.getValues().get(k)));
-			}
-		}
-		if(joinPredicate != null && joinPredicate.size() == 2)
-			joinPredicates.add(joinPredicate);
-		else if(joinPredicate != null && joinPredicate.size() == 1)
-			selectionColumns.add(joinPredicate.get(0));
-	}
-	
-	parseUsingColumns(joinlist, i);
-}
-}
-******/

@@ -272,6 +272,7 @@ public class MINCFragmentIntent{
 	}
 	
 	public static String[] cleanColArrayString(String colArray) throws Exception{
+		colArray = colArray.strip();
 		colArray=colArray.replace("[", "");
 		colArray=colArray.replace("]", "");
 		colArray=colArray.replaceAll("'", "");

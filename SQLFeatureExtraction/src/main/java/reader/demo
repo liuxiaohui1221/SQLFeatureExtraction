@@ -1,0 +1,9 @@
+SELECT (count() - sum(frustrated) - sum(tolerated) * 0.5)/count() AS apdex_RESP, avg(dur) AS dur_RESP,
+ sum(err) AS err_RESP, sum(err_4xx) AS err_4xx_RESP, sum(err_5xx) AS err_5xx_RESP, sum(err)/count() AS err_rate_RESP,
+ sum(fail) AS fail_RESP, sum(fail)/count() AS fail_rate_RESP, sum(frustrated) AS frustrated_RESP,
+ sum(frustrated)/count() AS frustrated_rate_RESP, sum(httperr) AS httperr_RESP, maxOrNull(ts) AS last_time_RESP,
+ sum(neterr) AS neterr_RESP, sum(tolerated) AS slow_RESP, sum(tolerated)/count() AS slow_rate_RESP,
+ count() AS total_RESP, method, path FROM dwm_request_cluster WHERE
+ (appid = \'pro-api-g10-xingyun\') AND (appsysid = \'bda14c5a-82cd-4087-8499-096b29b541c1\')
+ AND (group = \'E01090DB3A6CC1BA\') AND (ts <= toDateTime64(1684404959.999, 3)) AND
+ (ts >= toDateTime64(1683800100.000, 3)) GROUP BY method, path ORDER BY last_time_RESP DESC LIMIT 0, 1

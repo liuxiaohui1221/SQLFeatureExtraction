@@ -1,5 +1,6 @@
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Arrays;
@@ -137,7 +138,7 @@ public class SchemaParser {
 	
 	public void readInto(String fn, HashMap<String,String> MINCMap) {
 		try {
-			BufferedReader br = new BufferedReader(new FileReader(fn)); 
+			BufferedReader br = new BufferedReader(new FileReader(fn, Charset.forName("UTF-8")));
 			String st; 
 			while ((st = br.readLine()) != null) {
 				st = st.trim().toLowerCase();
