@@ -1312,23 +1312,6 @@ public class APMFragmentIntent
       //uncomment the following when full run needs to happen on EC2 or on EN4119510L
       //	readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
 
-      List<String> querys = Arrays.asList(
-          /*"SELECT sum(`err`) AS `err_##RESP##`, sum(`fail`) AS `fail_##RESP##`, sum(`frustrated`) AS `frustrated_##RESP##`, "
-          + "sum(`tolerated`) AS `slow_##RESP##`, count() AS `total_##RESP##` FROM `dwm_request`"
-          + " WHERE (`appsysid` = '2d2c5d75-0079-4e66-9db6-c6f42fc3b333')  AND (`ts` <= toDateTime64(1684399019.999, "
-          + "3)) "
-          + "AND (`ts` >= toDateTime64(1684339200., 3))",
-          "SELECT count() AS `total_##RESP##`, `name` FROM `dwm_exception` WHERE (`appid` = 'app-member-activity-xc') " +
-                  "AND (`ts` <= toDateTime64(1684425599.999, 3)) AND (`ts` >= toDateTime64(1684339200., 3)) GROUP BY `name` LIMIT 0, 5",*/
-              "SELECT COUNT(*) AS total_RESP, DATE_SUB(ts, INTERVAL MOD(UNIX_TIMESTAMP(ts), 7 * 24 * 60 * 60) SECOND) AS ts_RESP FROM dwm_request WHERE appid = 'pro-api-g10-xingyun' AND ts <= FROM_UNIXTIME(1684487339.999) AND ts >= FROM_UNIXTIME(1677834480.000) GROUP BY ts_RESP ORDER BY ts_RESP ASC",
-          "SELECT count() AS total_RESP, toStartOfInterval(ts, INTERVAL 7 day) AS ts_RESP FROM dwm_request WHERE appid = 'pro-api-g10-xingyun' AND ts <= toDateTime64(1684487339.999, 3) AND ts >= toDateTime64(1677834480.000, 3) GROUP BY ts_RESP ORDER BY ts_RESP ASC"
-      );
-      for (String query : querys) {
-        System.out.println(query);
-        String queryIntent = getQueryIntent(query, schParse, includeSelOpConst);
-        System.out.println(queryIntent.length() + "," + queryIntent);
-      }
-
       String tsvFilePath = "C:/buaa/data/APM/Input/ApmQuerys.tsv"; // TSV 文件路径
       try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
         CSVParser csvParser = new CSVParser(reader, CSVFormat.TDF.withFirstRecordAsHeader());
@@ -1388,7 +1371,7 @@ public class APMFragmentIntent
       // 还原某个方言的SQL
       SqlString sqlString = sqlNode.toSqlString(new ClickHouseSqlDialect(MY_CONTEXT));
       query = sqlString.getSql();
-      System.out.println("clickhouse query:"+query);
+      System.out.println("com.clickhouse query:"+query);
     }catch (Exception e){
       e.printStackTrace();
     }
