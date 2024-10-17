@@ -2,6 +2,7 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.util.ArrayList;
 
+import com.clickhouse.SchemaParser;
 import org.simmetrics.StringMetric;
 import org.simmetrics.metrics.StringMetrics;
 import toolsForMetrics.Pair;
@@ -18,7 +19,7 @@ public class IntentCreatorMultiThread extends Thread{
 	String dataset;
 	
 	public IntentCreatorMultiThread(String dataset, int threadID, ArrayList<String> sessQueries, Pair<Integer,Integer> lowerUpperIndexBounds,
-			String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries, boolean includeSelOpConst) {
+                                    String outputFile, SchemaParser schParse, String pruneKeepModifyRepeatedQueries, boolean includeSelOpConst) {
 		this.sessQueries = sessQueries;
 		this.lowerUpperIndexBounds = lowerUpperIndexBounds;
 		this.outputFile = outputFile;

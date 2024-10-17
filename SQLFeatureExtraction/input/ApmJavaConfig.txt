@@ -1,0 +1,13 @@
+MINC_TABLES=C:\\buaa\\data/APM/Input/ApmTables.txt
+MINC_COLS=C:\\buaa\\data/APM/Input/ApmColumns.txt
+MINC_COL_TYPES=C:\\buaa\\data/APM/Input/ApmColTypes.txt
+MINC_COL_BIT_POS=C:\\buaa\\data/APM/Input/ApmColBitPos.txt
+MINC_CONC_SESS_FILE=C:\\buaa\\data/APM/Input/MincConcurrentSessions
+MINC_RAW_SESS_FILE=C:\\buaa\\data/APM/Input/BusTrackerQueryLog
+MINC_TEMP_LOG_DIR=C:\\buaa\\data/APM/Input/TempOutput
+MINC_FRAGMENT_INTENT_VECTOR_FILE=C:\\buaa\\data/APM/Input/MincBitFragmentIntentSessions
+MINC_NUM_THREADS=100
+MINC_START_LINE_NUM=0
+MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES=PREPROCESS
+MINC_SEL_OP_CONST=false
+MINC_DATASET=Apm

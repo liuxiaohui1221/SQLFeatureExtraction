@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import com.clickhouse.SchemaParser;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
 import net.sf.jsqlparser.statement.Statement;
@@ -880,7 +881,7 @@ public class MINCFragmentIntent{
 			//System.exit(0);
 		}		
 	}
-	/*public static void readFrom100KFile(String queryFile, String line, String prevSessionID, SchemaParser schParse, int queryID, boolean includeSelOpConst, String dataset) throws Exception{
+	/*public static void readFrom100KFile(String queryFile, String line, String prevSessionID, com.clickhouse.SchemaParser schParse, int queryID, boolean includeSelOpConst, String dataset) throws Exception{
 		BufferedReader br = new BufferedReader(new FileReader(queryFile));
 		while((line=br.readLine())!=null) {
 			if(line.contains("Query")) {
@@ -1185,7 +1186,7 @@ public class MINCFragmentIntent{
 	//	concatenateOutputFiles(outputSplitFiles, intentVectorFile);
 	}
 	
-	/*public static void readFromConcurrentSessionsFile(String concSessFile, String intentVectorFile, String line, SchemaParser schParse, boolean includeSelOpConst, String dataset) throws Exception{
+	/*public static void readFromConcurrentSessionsFile(String concSessFile, String intentVectorFile, String line, com.clickhouse.SchemaParser schParse, boolean includeSelOpConst, String dataset) throws Exception{
 		BufferedReader br = new BufferedReader(new FileReader(concSessFile));
 		deleteIfExists(intentVectorFile);
 		HashMap<String, Integer> sessionQueryCount = new HashMap<String, Integer>();

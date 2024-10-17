@@ -1,3 +1,4 @@
+import com.clickhouse.SchemaParser;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
@@ -12,7 +13,6 @@ import org.apache.calcite.config.NullCollation;
 import org.apache.calcite.sql.SqlDialect;
 import org.apache.calcite.sql.SqlNode;
 import org.apache.calcite.sql.dialect.ClickHouseSqlDialect;
-import org.apache.calcite.sql.parser.SqlParseException;
 import org.apache.calcite.sql.parser.SqlParser;
 import org.apache.calcite.sql.parser.impl.SqlParserImpl;
 import org.apache.calcite.sql.util.SqlString;
@@ -20,13 +20,6 @@ import org.apache.calcite.sql.validate.SqlConformanceEnum;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import reader.DDLParser;
 import reader.ExcelReader;
 import reader.StringCleaner;
 import toolsForMetrics.Global;
@@ -44,8 +37,6 @@ import java.util.BitSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class APMFragmentIntent
 {
@@ -1301,7 +1292,7 @@ public class APMFragmentIntent
 //			homeDir = "/hdd2/vamsiCodeData"; // comment it when you are not running on EN4119510L.cidse.dhcp.adu.edu
 //		}
 //		String configFile = homeDir+"/var/data/MINC/InputOutput/MincJavaConfig.txt";
-    String configFile = "C:\\buaa\\data\\APM\\Input/ApmJavaConfig.txt";
+    String configFile = "input/ApmJavaConfig.txt";
     SchemaParser schParse = new SchemaParser();
     schParse.fetchSchema(configFile);
     HashMap<String, String> configDict = schParse.getConfigDict();

@@ -1,11 +1,12 @@
 package com.clickhouse;
 
 import com.clickhouse.parser.AstParser;
-import com.clickhouse.parser.ast.SelectStatement;
-import com.clickhouse.parser.ast.SelectUnionQuery;
+import com.clickhouse.parser.ast.*;
 import com.clickhouse.parser.ast.expr.*;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
@@ -13,7 +14,13 @@ public class ClickhouseSQLParser {
     public static final AtomicInteger successCount = new AtomicInteger(0);
     public static final AtomicInteger failCount = new AtomicInteger(0);
     private volatile String query;
-//    public static void main(String[] args) {
+    private SchemaParser schParse;
+    private List<String> selectionColumns = new ArrayList<>();
+    private List<String> fromTables = new ArrayList<>();
+    private List<String> whereColumns=new ArrayList<>();
+    private List<String> groupByColumns= new ArrayList<>();
+
+    //    public static void main(String[] args) {
 //        CalciteSQLParser calciteSQLParser = new CalciteSQLParser();
 //        String tsvFilePath = "input/ApmQuerys.tsv"; // TSV 文件路径
 //        try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
@@ -39,6 +46,9 @@ public class ClickhouseSQLParser {
 //        System.out.println("successCount:"+successCount.get());
 //        System.out.println("failCount:"+failCount.get());
 //    }
+    public ClickhouseSQLParser(SchemaParser schParse){
+        this.schParse=schParse;
+    }
 
     public void createQueryVector(String query){
         this.query=query;
@@ -67,6 +77,8 @@ public class ClickhouseSQLParser {
             }else{
                 System.out.println("not select query:"+query);
             }
+            //查询字段和聚合函数向量表征
+
             successCount.incrementAndGet();
         }catch (Exception e){
             e.printStackTrace();
@@ -83,31 +95,62 @@ public class ClickhouseSQLParser {
     }
 
     private void extractedSelectQuery(SelectStatement statement) {
-        //抽取select字段
+        //todo 抽取select字段，聚合函数
         List<ColumnExpr> exprs = statement.getExprs();
         for (ColumnExpr expr : exprs) {
-            extractedColumnExpr(expr);
+            extractedColumnExpr(expr,selectionColumns);
+        }
+        //抽取from中表
+        FromClause fromClause = statement.getFromClause();
+        if(fromClause==null){
+            return;
+        }
+        String name = fromClause.getExpr().getTableExpr().getIdentifier().getName();
+        if(name.endsWith("_cluster")){
+            name = name.substring(0,name.length()-8);
+        }
+        System.out.println("table:"+name);
+        fromTables.add(name);
+        //抽取where条件字段
+        WhereClause whereClause = statement.getWhereClause();
+        if(whereClause!=null){
+            extractedWhereClause(whereClause);
+        }
+        //抽取group by字段
+        GroupByClause groupByClause = statement.getGroupByClause();
+        if(groupByClause!=null){
+            List<ColumnExpr> groupByExprs = groupByClause.getGroupByExprs();
+            if(groupByExprs != null){
+                for (ColumnExpr expr : groupByExprs)
+                    extractedColumnExpr(expr,groupByColumns);
+            }
         }
     }
 
-    private void extractedColumnExpr(ColumnExpr expr) {
+    private void extractedWhereClause(WhereClause whereClause) {
+        ColumnExpr whereExpr = whereClause.getWhereExpr();
+        extractedColumnExpr(whereExpr,whereColumns);
+    }
+
+    private void extractedColumnExpr(ColumnExpr expr,List<String> selectionColumns) {
         if(expr instanceof IdentifierColumnExpr){
             IdentifierColumnExpr colExpr = (IdentifierColumnExpr)expr;
             String name = colExpr.getIdentifier().getName();
-            System.out.println("column:"+name);
+            //System.out.println("column:"+name);
+            selectionColumns.add(name);
         }else if(expr instanceof AliasColumnExpr){
             AliasColumnExpr colExpr = (AliasColumnExpr)expr;
             ColumnExpr expr1 = colExpr.getExpr();
-            extractedColumnExpr(expr1);
+            extractedColumnExpr(expr1,selectionColumns);
         }else if(expr instanceof FunctionColumnExpr){
             FunctionColumnExpr colExpr = (FunctionColumnExpr)expr;
             List<ColumnExpr> args = colExpr.getArgs();
             if(args!=null){
                 for(ColumnExpr arg:args){
-                    extractedColumnExpr(arg);
+                    extractedColumnExpr(arg,selectionColumns);
                 }
             }else if("count".equalsIgnoreCase(colExpr.getName().getName())){
-
+                selectionColumns.add("count(1)");
             }else{
                 System.out.println("not supported FunctionColumnExpr:"+expr);
             }

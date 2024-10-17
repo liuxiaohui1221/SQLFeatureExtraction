@@ -16,6 +16,6 @@ Our code for SQL fragment extraction includes:
 * SQLFeatureExtraction/src/main/java/MINCFragmentIntent.java
 * SQLFeatureExtraction/src/main/java/IntentCreator.java
 * SQLFeatureExtraction/src/main/java/SQLParser.java
-* SQLFeatureExtraction/src/main/java/SchemaParser.java
+* SQLFeatureExtraction/src/main/java/com.clickhouse.SchemaParser.java
 
 The remaining code from https://github.com/UBOdin/EttuBench serves as utility code for our SQL Fragment extraction.

@@ -1,6 +1,7 @@
 package com.clickhouse.parser;
 
 import com.clickhouse.ClickhouseSQLParser;
+import com.clickhouse.SchemaParser;
 import com.clickhouse.parser.ast.DistributedTableInfoDetector;
 import com.clickhouse.parser.ast.INode;
 import lombok.extern.slf4j.Slf4j;
@@ -81,7 +82,10 @@ public class TestAstParser {
 
     @Test
     public void testSQL() {
-        ClickhouseSQLParser calciteSQLParser = new ClickhouseSQLParser();
+        String configFile = "input/ApmJavaConfig.txt";
+        SchemaParser schParse = new SchemaParser();
+        schParse.fetchSchema(configFile);
+        ClickhouseSQLParser calciteSQLParser = new ClickhouseSQLParser(schParse);
         String tsvFilePath = "input/ApmQuerys.tsv"; // TSV 文件路径
         try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
             CSVParser csvParser = new CSVParser(reader, CSVFormat.TDF.withFirstRecordAsHeader());
@@ -91,6 +95,7 @@ public class TestAstParser {
             List<String> headers = csvParser.getHeaderNames();
             System.out.println("Headers: " + headers);
             int count=0;
+            //1.抽取字段，聚合函数，2.查询编码向量
             for (CSVRecord record : records) {
                 String query = record.get("query");
                 if(!ExcelReader.filterSql(query)){
@@ -109,7 +114,7 @@ public class TestAstParser {
     @Test
     public void testSQL2() {
         String query="SELECT count() AS total_RESP, toStartOfInterval(ts, INTERVAL 7 day, 'Asia/Shanghai') AS ts_RESP FROM dwm_request_cluster WHERE (appid = 'pro-api-g10-xingyun') AND (ts <= toDateTime64(1684487339.999, 3)) AND (ts >= toDateTime64(1677834480.000, 3)) GROUP BY ts_RESP ORDER BY ts_RESP ASC";
-        ClickhouseSQLParser calciteSQLParser = new ClickhouseSQLParser();
+        ClickhouseSQLParser calciteSQLParser = new ClickhouseSQLParser(null);
         calciteSQLParser.createQueryVector(query);
         System.out.println("successCount:"+ ClickhouseSQLParser.successCount.get());
         System.out.println("failCount:"+ ClickhouseSQLParser.failCount.get());
