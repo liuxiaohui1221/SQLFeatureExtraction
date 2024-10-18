@@ -10,7 +10,6 @@ public class StringCleaner {
 
     public static String cleanString(String input) {
         input = input.replaceAll("`", "");
-        input = input.replaceAll("`group`", "group1");
         input = input.replaceAll("#", "");
         input = input.replaceAll(";", "");
         input = input.replaceAll("\\\\n", "");

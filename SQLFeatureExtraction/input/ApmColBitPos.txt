@@ -25,7 +25,7 @@ dwm_crash.city:23
 dwm_crash.desc:24
 dwm_crash.device:25
 dwm_crash.error:26
-dwm_crash.group1:27
+dwm_crash.group:27
 dwm_crash.ip:28
 dwm_crash.os:29
 dwm_crash.os_version:30
@@ -38,7 +38,7 @@ dwm_exception.agentid:36
 dwm_exception.appid:37
 dwm_exception.appsysid:38
 dwm_exception.class:39
-dwm_exception.group1:40
+dwm_exception.group:40
 dwm_exception.interface:41
 dwm_exception.ip:42
 dwm_exception.message:43
@@ -58,7 +58,7 @@ dwm_freeze.city:56
 dwm_freeze.desc:57
 dwm_freeze.device:58
 dwm_freeze.error:59
-dwm_freeze.group1:60
+dwm_freeze.group:60
 dwm_freeze.ip:61
 dwm_freeze.os:62
 dwm_freeze.os_version:63
@@ -110,7 +110,7 @@ dwm_netrequest.device_id:108
 dwm_netrequest.dur:109
 dwm_netrequest.err_4xx:110
 dwm_netrequest.err_5xx:111
-dwm_netrequest.group1:112
+dwm_netrequest.group:112
 dwm_netrequest.inst_id:113
 dwm_netrequest.inst_name:114
 dwm_netrequest.link_id:115
@@ -153,7 +153,7 @@ dwm_request.err_5xx:151
 dwm_request.exception:152
 dwm_request.fail:153
 dwm_request.frustrated:154
-dwm_request.group1:155
+dwm_request.group:155
 dwm_request.host:156
 dwm_request.httperr:157
 dwm_request.ip_addr:158
@@ -191,7 +191,7 @@ dwm_sql.dbtype:189
 dwm_sql.dur:190
 dwm_sql.err:191
 dwm_sql.frustrated:192
-dwm_sql.group1:193
+dwm_sql.group:193
 dwm_sql.outputs:194
 dwm_sql.session_id:195
 dwm_sql.spanid:196
@@ -281,7 +281,7 @@ dwm_webpage.domain:279
 dwm_webpage.first:280
 dwm_webpage.first_pos:281
 dwm_webpage.frustrated:282
-dwm_webpage.group1:283
+dwm_webpage.group:283
 dwm_webpage.html:284
 dwm_webpage.html_pos:285
 dwm_webpage.init_dom_tree:286

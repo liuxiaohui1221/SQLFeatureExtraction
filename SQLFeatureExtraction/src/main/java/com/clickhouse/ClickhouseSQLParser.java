@@ -1,24 +1,34 @@
 package com.clickhouse;
 
+import booleanFormulaEntities.BooleanNormalClause;
 import com.clickhouse.parser.AstParser;
 import com.clickhouse.parser.ast.*;
 import com.clickhouse.parser.ast.expr.*;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
+@Data
 public class ClickhouseSQLParser {
     public static final AtomicInteger successCount = new AtomicInteger(0);
     public static final AtomicInteger failCount = new AtomicInteger(0);
     private volatile String query;
     private SchemaParser schParse;
-    private List<String> selectionColumns = new ArrayList<>();
+    private HashSet<String> selectionColumns = new HashSet<>();
     private List<String> fromTables = new ArrayList<>();
-    private List<String> whereColumns=new ArrayList<>();
-    private List<String> groupByColumns= new ArrayList<>();
+    private HashSet<String> whereColumns=new HashSet<>();
+    private HashSet<String> groupByColumns= new HashSet<>();
+    private HashSet<String> havingColumns=new HashSet<>();
+    private HashSet<String> orderByColumns=new HashSet<>();
+    private HashMap<String,ColumnExpr> colAliases=new HashMap<>();
+    private HashSet<String> sumColumns=new HashSet<>();
+    private HashSet<String> maxColumns=new HashSet<>();
+    private HashSet<String> minColumns=new HashSet<>();
 
     //    public static void main(String[] args) {
 //        CalciteSQLParser calciteSQLParser = new CalciteSQLParser();
@@ -95,14 +105,12 @@ public class ClickhouseSQLParser {
     }
 
     private void extractedSelectQuery(SelectStatement statement) {
-        //todo 抽取select字段，聚合函数
-        List<ColumnExpr> exprs = statement.getExprs();
-        for (ColumnExpr expr : exprs) {
-            extractedColumnExpr(expr,selectionColumns);
-        }
         //抽取from中表
         FromClause fromClause = statement.getFromClause();
         if(fromClause==null){
+            return;
+        }
+        if(fromClause.getExpr().getTableExpr().getIdentifier()==null){
             return;
         }
         String name = fromClause.getExpr().getTableExpr().getIdentifier().getName();
@@ -111,6 +119,12 @@ public class ClickhouseSQLParser {
         }
         System.out.println("table:"+name);
         fromTables.add(name);
+        //抽取select字段，聚合函数
+        List<ColumnExpr> exprs = statement.getExprs();
+        for (ColumnExpr expr : exprs) {
+            extractedColumnExpr(expr,selectionColumns);
+        }
+
         //抽取where条件字段
         WhereClause whereClause = statement.getWhereClause();
         if(whereClause!=null){
@@ -132,27 +146,47 @@ public class ClickhouseSQLParser {
         extractedColumnExpr(whereExpr,whereColumns);
     }
 
-    private void extractedColumnExpr(ColumnExpr expr,List<String> selectionColumns) {
+    private void extractedColumnExpr(ColumnExpr expr,HashSet<String> selectionColumns) {
         if(expr instanceof IdentifierColumnExpr){
             IdentifierColumnExpr colExpr = (IdentifierColumnExpr)expr;
             String name = colExpr.getIdentifier().getName();
             //System.out.println("column:"+name);
-            selectionColumns.add(name);
+            if(!colAliases.containsKey(name)){
+                selectionColumns.add(name);
+            }else{
+                //别名替换
+                ColumnExpr expr1 = colAliases.get(name);
+                extractedColumnExpr(expr1,selectionColumns);
+            }
         }else if(expr instanceof AliasColumnExpr){
             AliasColumnExpr colExpr = (AliasColumnExpr)expr;
+            //在同一个SELECT语句的WHERE、ORDER BY、GROUP BY等子句中引用别名。
+            String colAlias = colExpr.getAlias().getName();
+            colAliases.put(colAlias,colExpr.getExpr());
             ColumnExpr expr1 = colExpr.getExpr();
             extractedColumnExpr(expr1,selectionColumns);
         }else if(expr instanceof FunctionColumnExpr){
             FunctionColumnExpr colExpr = (FunctionColumnExpr)expr;
-            List<ColumnExpr> args = colExpr.getArgs();
-            if(args!=null){
-                for(ColumnExpr arg:args){
-                    extractedColumnExpr(arg,selectionColumns);
+            if(!"equals".equals(colExpr.getName().getName())){
+                List<ColumnExpr> args = colExpr.getArgs();
+                if(args!=null) {
+                    if(args.get(0) instanceof IdentifierColumnExpr){
+                        IdentifierColumnExpr aggColExpr=(IdentifierColumnExpr)args.get(0);
+                        if("sum".equals(colExpr.getName().getName())){
+                            sumColumns.add(aggColExpr.getIdentifier().getName());
+                        }else if("max".equals(colExpr.getName().getName())){
+                            maxColumns.add(aggColExpr.getIdentifier().getName());
+                        }else if("min".equals(colExpr.getName().getName())){
+                            minColumns.add(aggColExpr.getIdentifier().getName());
+                        }
+                    }
+                    for (ColumnExpr arg : args) {
+                        extractedColumnExpr(arg, selectionColumns);
+                    }
+                }else if("count".equalsIgnoreCase(colExpr.getName().getName())){
+                }else{
+                    System.out.println("not supported FunctionColumnExpr:"+expr);
                 }
-            }else if("count".equalsIgnoreCase(colExpr.getName().getName())){
-                selectionColumns.add("count(1)");
-            }else{
-                System.out.println("not supported FunctionColumnExpr:"+expr);
             }
         } else if(expr instanceof LiteralColumnExpr){
         }else{

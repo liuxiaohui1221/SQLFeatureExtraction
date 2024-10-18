@@ -286,7 +286,6 @@ public class SchemaParser {
 			configDict = new HashMap<String, String>();
 			BufferedReader br = new BufferedReader(new FileReader(configFile)); 
 			String st;
-			String homeDir="";
 //			String homeDir = System.getProperty("user.home");
 //			if(MINCFragmentIntent.getMachineName().contains("4119510") || MINCFragmentIntent.getMachineName().contains("4119509")
 //					|| MINCFragmentIntent.getMachineName().contains("4119508") || MINCFragmentIntent.getMachineName().contains("4119507")) {
@@ -295,7 +294,7 @@ public class SchemaParser {
 			while ((st = br.readLine()) != null) {
 				st = st.trim();
 				String key = st.split("=")[0];
-				String val = homeDir+"/"+st.split("=")[1];
+				String val = st.split("=")[1];
 				if(key.contains("MINC_NUM_THREADS") || key.contains("MINC_START_SESS_INDEX") || key.contains("MINC_SEL_OP_CONST") || key.contains("MINC_DATASET")
 						|| key.contains("MINC_START_LINE_NUM") || key.contains("MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES"))
 					val = st.split("=")[1];

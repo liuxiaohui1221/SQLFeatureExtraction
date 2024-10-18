@@ -1,4 +1,6 @@
+import com.clickhouse.ClickhouseSQLParser;
 import com.clickhouse.SchemaParser;
+import lombok.extern.slf4j.Slf4j;
 import net.sf.jsqlparser.parser.CCJSqlParser;
 import net.sf.jsqlparser.schema.Column;
 import net.sf.jsqlparser.schema.Table;
@@ -38,32 +40,32 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
+@Slf4j
 public class APMFragmentIntent
 {
   String originalSQL;
-  Statement statement;
   String intentBitVector;
   StringBuilder intentBitVecBuilder;
-  List<Table> tables = new ArrayList<Table>();
-  HashMap<String, Column> colAliases = null;
-  HashSet<Column> groupByColumns = new HashSet<Column>();
-  HashSet<Column> selectionColumns = new HashSet<Column>();
-  HashSet<Column> havingColumns = new HashSet<Column>();
-  HashSet<Column> orderByColumns = new HashSet<Column>();
-  HashSet<Column> projectionColumns = new HashSet<Column>();
-  HashSet<ArrayList<Column>> joinPredicates = new HashSet<ArrayList<Column>>();
+  List<String> tables = new ArrayList<>();
+  HashMap<String, String> colAliases = null;
+  HashSet<String> groupByColumns = new HashSet<>();
+  HashSet<String> whereColumns = new HashSet<>();
+  HashSet<String> havingColumns = new HashSet<>();
+  HashSet<String> orderByColumns = new HashSet<>();
+  HashSet<String> projectionColumns = new HashSet<>();
+  HashSet<ArrayList<String>> joinPredicates = new HashSet<ArrayList<String>>();
   HashSet<String> limitList = new HashSet<String>();
-  HashSet<Column> MINColumns = new HashSet<Column>();
-  HashSet<Column> MAXColumns = new HashSet<Column>();
-  HashSet<Column> AVGColumns = new HashSet<Column>();
-  HashSet<Column> SUMColumns = new HashSet<Column>();
-  HashSet<Column> COUNTColumns = new HashSet<Column>();
-  HashMap<Column, ArrayList<String>> selPredOps;
-  HashMap<Column, ArrayList<String>> selPredConstants;
+  HashSet<String> MINColumns = new HashSet<>();
+  HashSet<String> MAXColumns = new HashSet<>();
+  HashSet<String> AVGColumns = new HashSet<>();
+  HashSet<String> SUMColumns = new HashSet<>();
+  HashSet<String> COUNTColumns = new HashSet<>();
+  HashMap<String, ArrayList<String>> selPredOps;
+  HashMap<String, ArrayList<String>> selPredConstants;
   String queryTypeBitMap;
   String tableBitMap;
   String groupByBitMap;
-  String selectionBitMap;
+  String whereBitMap;
   String havingBitMap;
   String orderByBitMap;
   String projectionBitMap;
@@ -82,8 +84,7 @@ public class APMFragmentIntent
   SchemaParser schParse; // used for retrieval of schema related information
   boolean includeSelOpConst; // decide whether or not to include selOpConst
   String dataset; // dataset info
-
-  List<String> specialColumns = Arrays.asList("group1");
+  ClickhouseSQLParser sqlParser;
 
   public APMFragmentIntent(String originalSQL, SchemaParser schParse, boolean includeSelOpConst, String dataset)
       throws Exception
@@ -93,26 +94,10 @@ public class APMFragmentIntent
     this.includeSelOpConst = includeSelOpConst;
     this.dataset = dataset;
     Global.tableAlias = new HashMap<String, String>();
-    InputStream stream = new ByteArrayInputStream(this.originalSQL.getBytes(StandardCharsets.UTF_8));
-    CCJSqlParser parser = new CCJSqlParser(stream);
-    this.statement = null;
+    sqlParser = new ClickhouseSQLParser(schParse);
     this.intentBitVector = null;
     this.intentBitVecBuilder = new StringBuilder();
-    try {
-      this.statement = parser.Statement();
-      if (this.statement instanceof Select) {
-        this.queryType = "select";
-      } else if (statement instanceof Update) {
-        this.queryType = "update";
-      } else if (statement instanceof Insert) {
-        this.queryType = "insert";
-      } else if (statement instanceof Delete) {
-        this.queryType = "delete";
-      }
-    }
-    catch (Exception e) {
-      e.printStackTrace();
-    }
+    this.queryType = "select";
   }
 
   public static String getMachineName()
@@ -164,7 +149,7 @@ public class APMFragmentIntent
     bw.append("intentVector:" + this.intentBitVector + "\n");
     bw.append("queryTypeBitMap:" + this.queryTypeBitMap + "\n");
     bw.append("TableBitMap:" + this.tableBitMap + "\n");
-    bw.append("SelectionBitMap:" + this.selectionBitMap + "\n");
+    bw.append("SelectionBitMap:" + this.whereBitMap + "\n");
     bw.append("GroupByBitMap:" + this.groupByBitMap + "\n");
     bw.append("OrderByBitMap:" + this.orderByBitMap + "\n");
     bw.append("ProjectionBitMap:" + this.projectionBitMap + "\n");
@@ -191,8 +176,7 @@ public class APMFragmentIntent
     System.out.println("----OPERATOR-WISE FRAGMENT------");
     System.out.println("queryTypeBitMap: " + this.queryTypeBitMap);
     System.out.println("TableBitMap: " + this.tableBitMap);
-    System.out.println("TableBitMap: " + this.tableBitMap);
-    System.out.println("SelectionBitMap:" + this.selectionBitMap);
+    System.out.println("SelectionBitMap:" + this.whereBitMap);
     System.out.println("OrderByBitMap: " + this.orderByBitMap);
     System.out.println("ProjectionBitMap: " + this.projectionBitMap);
     System.out.println("HavingBitMap: " + this.havingBitMap);
@@ -209,33 +193,32 @@ public class APMFragmentIntent
     }
   }
 
-  public void populateOperatorObjects(SQLParser parser) throws Exception
+  public void populateOperatorObjects() throws Exception
   {
-    this.tables = parser.getTables();
-    this.colAliases = parser.getColAliases();
-    this.groupByColumns = parser.getGroupByColumns();
-    this.selectionColumns = parser.getSelectionColumns();
-    this.havingColumns = parser.getHavingColumns();
-    this.orderByColumns = parser.getOrderByColumns();
-    this.projectionColumns = parser.getProjectionColumns();
-    this.joinPredicates = parser.getJoinPredicates();
-    this.limitList = parser.getLimitList();
-    this.MINColumns = parser.getMINColumns();
-    this.MAXColumns = parser.getMAXColumns();
-    this.AVGColumns = parser.getAVGColumns();
-    this.SUMColumns = parser.getSUMColumns();
-    this.COUNTColumns = parser.getCOUNTColumns();
-    if (this.includeSelOpConst) {
-      this.selPredOps = parser.getSelPredOps();
-      this.selPredConstants = parser.getSelPredConstants();
-    }
+    this.tables = sqlParser.getFromTables();
+//    this.colAliases = sqlParser.getColAliases();
+    this.groupByColumns = sqlParser.getGroupByColumns();
+    this.whereColumns = sqlParser.getWhereColumns();
+//    this.havingColumns = sqlParser.getHavingColumns();
+//    this.orderByColumns = sqlParser.getOrderByColumns();
+    this.projectionColumns = sqlParser.getSelectionColumns();
+//    this.joinPredicates = sqlParser.getJoinPredicates();
+//    this.limitList = sqlParser.getLimitList();
+    this.MINColumns = sqlParser.getMinColumns();
+    this.MAXColumns = sqlParser.getMaxColumns();
+//    this.AVGColumns = sqlParser.getAVGColumns();
+    this.SUMColumns = sqlParser.getSumColumns();
+//    this.COUNTColumns = sqlParser.getCOUNTColumns();
+//    if (this.includeSelOpConst) {
+//      this.selPredOps = sqlParser.getSelPredOps();
+//      this.selPredConstants = sqlParser.getSelPredConstants();
+//    }
   }
 
   public void parseQuery() throws Exception
   {
-    SQLParser parser = new SQLParser(this.schParse, this.originalSQL, this.includeSelOpConst, this.dataset);
-    parser.createQueryVector(this.statement);
-    populateOperatorObjects(parser);
+    sqlParser.createQueryVector(this.originalSQL);
+    populateOperatorObjects();
   }
 
   public void createBitVectorForQueryTypes() throws Exception
@@ -279,9 +262,9 @@ public class APMFragmentIntent
   {
     HashMap<String, Integer> MINCTables = this.schParse.fetchMINCTables();
     BitSet b = new BitSet(MINCTables.size());
-    for (Table tab : this.tables) {
+    for (String tableName : this.tables) {
       try {
-        String tableName = this.cleanString(tab.getName().toLowerCase());
+        tableName = this.cleanString(tableName.toLowerCase());
         int tableIndex = MINCTables.get(tableName);
         b.set(tableIndex);
       }catch (Exception e) {
@@ -294,8 +277,8 @@ public class APMFragmentIntent
 
   public boolean checkIfTableExists(String tableName) throws Exception
   {
-    for (Table tab : this.tables) {
-      String queryTableName = this.cleanString(tab.getName().toLowerCase());
+    for (String tab : this.tables) {
+      String queryTableName = this.cleanString(tab.toLowerCase());
       if (tableName.equals(queryTableName)) {
         return true;
       }
@@ -310,28 +293,6 @@ public class APMFragmentIntent
     colArray = colArray.replace("]", "");
     colArray = colArray.replaceAll("'", "");
     return colArray.split(",\\s*");
-  }
-
-
-  public String setColumnsFromTable(String tableName, ArrayList<String> colNames) throws Exception
-  {
-    if (colNames == null) {
-      return setAllorNoneColumnsFromTable(tableName, "none");
-    }
-    if (colNames.size() == 1 && colNames.get(0).equals("*")) {
-      return setAllorNoneColumnsFromTable(tableName, "all");
-    }
-    HashMap<String, String> MINCColumns = this.schParse.fetchMINCColumns();
-    String[] colArray = cleanColArrayString(MINCColumns.get(tableName));
-    BitSet b = new BitSet(colArray.length);
-    if (colNames != null) {
-      for (int i = 0; i < colArray.length; i++) {
-        if (colNames.contains(colArray[i].toLowerCase()) || colNames.contains(colArray[i].toUpperCase())) {
-          b.set(i);
-        }
-      }
-    }
-    return toString(b, colArray.length);
   }
 
   public String setAllorNoneColumnsFromTable(String tableName, String allorNone) throws Exception
@@ -369,12 +330,12 @@ public class APMFragmentIntent
 
   public String searchColDictForTableName(String colName) throws Exception
   {
-    for (Table table : this.tables) {
+    for (String table : this.tables) {
       HashMap<String, String> MINCColumns = this.schParse.fetchMINCColumns();
-      String[] colArray = cleanColArrayString(MINCColumns.get(table.getName().replace("`", "").toLowerCase()));
+      String[] colArray = cleanColArrayString(MINCColumns.get(table.replace("`", "").toLowerCase()));
       for (int i = 0; i < colArray.length; i++) {
         if (colArray[i].equals(colName)) {
-          return table.getName();
+          return table.toLowerCase();
         }
       }
     }
@@ -383,8 +344,8 @@ public class APMFragmentIntent
 
   public boolean searchForTableName(String tableName) throws Exception
   {
-    for (Table t : this.tables) {
-      if (t.getName().toLowerCase().equals(tableName)) {
+    for (String t : this.tables) {
+      if (t.toLowerCase().equals(tableName)) {
         return true;
       }
     }
@@ -392,10 +353,10 @@ public class APMFragmentIntent
   }
 
 
-  public HashMap<String, ArrayList<String>> createTableColumnDict(HashSet<Column> colSet) throws Exception
+  public HashMap<String, ArrayList<String>> createTableColumnDict(HashSet<String> colSet) throws Exception
   {
     HashMap<String, ArrayList<String>> tableColumnDict = new HashMap<String, ArrayList<String>>();
-    for (Column c : colSet) {
+    for (String c : colSet) {
       Pair<String, String> tabColName = this.retrieveTabColName(c);
       String tableName = tabColName.first;
       String colName = tabColName.second;
@@ -425,11 +386,11 @@ public class APMFragmentIntent
     return bitVector;
   }
 
-  public String createBitVectorForOpColSet(HashSet<Column> colSet) throws Exception
+  public String createBitVectorForOpColSet(HashSet<String> colSet) throws Exception
   {
     String b = "";
-    for (Column c : colSet) {
-      if (c.toString().equals("*")) {
+    for (String c : colSet) {
+      if (c.equals("*")) {
         b = setAllColumns();
         appendToBitVectorString(b);
         return b;
@@ -454,15 +415,14 @@ public class APMFragmentIntent
           String fullColName = tableName + "." + colName;
           int colBitPos;
           try {
-            if(colAliases.containsKey(tableName + ".`" + colName+"`")){
-              fullColName=colAliases.get(tableName + ".`" + colName+"`").getColumnName().toLowerCase();
-            }
+            /*if(colAliases.containsKey(tableName + ".`" + colName+"`")){
+              fullColName=colAliases.get(tableName + ".`" + colName+"`").toLowerCase();
+            }*/
             colBitPos = schemaCols.get(fullColName);
             bitVector.set(colBitPos);
           }
           catch (Exception e) {
             e.printStackTrace();
-            continue;
           }
         }
       }
@@ -482,145 +442,6 @@ public class APMFragmentIntent
       this.appendToBitVectorString("0");
       this.limitBitMap = "0";
     }
-  }
-
-  /*public HashMap<HashSet<String>, ArrayList<HashSet<String>>> convertColumnListToStringSet() throws Exception
-  {
-    HashMap<HashSet<String>, ArrayList<HashSet<String>>> joinPredDictQuery = new HashMap<HashSet<String>, ArrayList<HashSet<String>>>();
-    for (ArrayList<Column> colPair : this.joinPredicates) {
-      HashSet<String> tableNamePair = new HashSet<String>();
-      HashSet<String> columnNamePair = new HashSet<String>();
-      for (Column c : colPair) {
-        Pair<String, String> tabColName = this.retrieveTabColName(c);
-        String tableName = tabColName.first;
-        String colName = tabColName.second;
-        if (tableName == null) {
-          continue;
-        }
-        tableNamePair.add(tableName);
-        columnNamePair.add(colName);
-      }
-      if (!joinPredDictQuery.containsKey(tableNamePair)) {
-        joinPredDictQuery.put(tableNamePair, new ArrayList<HashSet<String>>());
-      }
-      joinPredDictQuery.get(tableNamePair).add(columnNamePair);
-    }
-    return joinPredDictQuery;
-  }*/
-
-  public int locateHashSetInValues(HashSet<String> querySet, ArrayList<HashSet<String>> valueList) throws Exception
-  {
-    int valueIndex = 0;
-    for (HashSet<String> key : valueList) {
-      if (Util.equals(querySet, key)) {
-        return valueIndex;
-      }
-      valueIndex++;
-    }
-    return -1;
-  }
-
-  public String locateHashSetInKeys(HashSet<String> querySet, HashSet<String> keySet) throws Exception
-  {
-    String[] queryArr = querySet.toArray(new String[querySet.size()]);
-    if (queryArr.length == 1) {
-      String key = queryArr[0] + "," + queryArr[0];
-      if (keySet.contains(key)) {
-        return key;
-      }
-    } else if (queryArr.length == 2) {
-      String key = queryArr[0] + "," + queryArr[1];
-      if (keySet.contains(key)) {
-        return key;
-      }
-      key = queryArr[1] + "," + queryArr[0];
-      if (keySet.contains(key)) {
-        return key;
-      }
-    } else {
-      System.out.println("querySet should be a pair and does not contain more than 2 tables !!");
-    }
-    return null;
-  }
-
-  public static boolean compareJoinPreds(Pair<String, String> set1, HashSet<String> set2)
-  {
-    if (set1 == null || set2 == null) {
-      return false;
-    }
-
-
-    HashSet<String> pairToSet = new HashSet<String>();
-    pairToSet.add(set1.first.trim());
-    pairToSet.add(set1.second.trim());
-		
-	/*	if(pairToSet.contains("params")) {
-			 int a = 1;
-		}
-		*/
-
-    return Util.equals(pairToSet, set2);
-  }
-
-  public HashMap<String, ArrayList<String>> createJoinDictQuery() throws Exception
-  {
-    HashMap<String, ArrayList<String>> joinPredDictQuery = new HashMap<String, ArrayList<String>>();
-    for (ArrayList<Column> colPair : this.joinPredicates) {
-      String leftTable = null, leftCol = null, rightTable = null, rightCol = null;
-      assert colPair.size() == 2;
-      for (int i = 0; i < colPair.size(); i++) {
-        Column c = colPair.get(i);
-        Pair<String, String> tabColName = this.retrieveTabColName(c);
-        String tableName = tabColName.first;
-        String colName = tabColName.second;
-        if (tableName == null) {
-          continue;
-        }
-        if (i == 0) {
-          leftTable = tableName;
-          leftCol = colName;
-        } else if (i == 1) {
-          rightTable = tableName;
-          rightCol = colName;
-        }
-      }
-      int leftTableIndex = this.schParse.fetchMINCTables().get(leftTable);
-      int rightTableIndex = this.schParse.fetchMINCTables().get(rightTable);
-      String joinColPair = null;
-      String joinTablePair = null;
-      if (leftTableIndex <= rightTableIndex) {
-        joinTablePair = leftTable + "," + rightTable;
-        joinColPair = leftCol + "," + rightCol;
-      } else {
-        joinTablePair = rightTable + "," + leftTable;
-        joinColPair = rightCol + "," + leftCol;
-      }
-      if (!joinPredDictQuery.containsKey(joinTablePair)) {
-        joinPredDictQuery.put(joinTablePair, new ArrayList<String>());
-      }
-      joinPredDictQuery.get(joinTablePair).add(joinColPair);
-    }
-    return joinPredDictQuery;
-  }
-
-  public void createBitVectorForJoin() throws Exception
-  {
-    HashMap<String, ArrayList<String>> joinPredDictQuery = createJoinDictQuery();
-    HashMap<String, ArrayList<String>> joinPredDictSchema = this.schParse.fetchMINCJoinPreds();
-    HashMap<String, Pair<Integer, Integer>> joinPredBitPosSchema = this.schParse.fetchMINCJoinPredBitPos();
-    BitSet joinPredIntentVector = new BitSet(this.schParse.fetchMINCJoinPredBitCount());
-    for (String tablePairQuery : joinPredDictQuery.keySet()) {
-      ArrayList<String> joinPredListSchema = joinPredDictSchema.get(tablePairQuery);
-      ArrayList<String> joinPredListQuery = joinPredDictQuery.get(tablePairQuery);
-      Pair<Integer, Integer> startEndBitPos = joinPredBitPosSchema.get(tablePairQuery);
-      for (String joinPredQuery : joinPredListQuery) {
-        int bitIndex = startEndBitPos.first + joinPredListSchema.indexOf(joinPredQuery);
-        joinPredIntentVector.set(bitIndex);
-      }
-    }
-    String b = toString(joinPredIntentVector, this.schParse.fetchMINCJoinPredBitCount());
-    this.appendToBitVectorString(b);
-    this.joinPredicatesBitMap = b;
   }
 
   public Pair<String, String> replaceColAliases(String tableName, String colName) throws Exception
@@ -643,10 +464,10 @@ public class APMFragmentIntent
     return tabColName;
   }
 
-  public Pair<String, String> retrieveTabColName(Column c) throws Exception
+  public Pair<String, String> retrieveTabColName(String c) throws Exception
   {
     Pair<String, String> tabColName;
-    String fullName = c.toString().replace("`", "").toLowerCase();
+    String fullName = c.replace("`", "").toLowerCase();
     String tableName;
     String colName = fullName.toLowerCase();
     if (fullName.contains(".")) {
@@ -662,9 +483,9 @@ public class APMFragmentIntent
     } else {
       // there should be a single table name in the from clause, else simply search for the first table name
       if (this.tables.size() == 1) {
-        tableName = this.tables.get(0).getName().replace("`", "").toLowerCase();
+        tableName = this.tables.get(0).replace("`", "").toLowerCase();
       } else {
-        tableName = searchColDictForTableName(colName.toLowerCase()).toLowerCase();
+        tableName = searchColDictForTableName(colName.toLowerCase());
       }
       if (tableName != null) {
         tableName = tableName.toLowerCase();
@@ -817,7 +638,7 @@ public class APMFragmentIntent
     int selColRangeBitMapSize = this.schParse.fetchMINCSelPredColRangeBitCount();
     BitSet bitVector = new BitSet(selColRangeBitMapSize); // col range bit count
     int bitPosToSet;
-    for (Column c : this.selPredConstants.keySet()) {
+    for (String c : this.selPredConstants.keySet()) {
       ArrayList<String> constValList = this.selPredConstants.get(c);
       String selColFullName = retrieveFullColumnName(c);
       for (String constVal : constValList) {
@@ -831,7 +652,7 @@ public class APMFragmentIntent
     return;
   }
 
-  public String retrieveFullColumnName(Column c) throws Exception
+  public String retrieveFullColumnName(String c) throws Exception
   {
     Pair<String, String> tabColName = retrieveTabColName(c);
     String tableName = tabColName.first;
@@ -847,7 +668,7 @@ public class APMFragmentIntent
     HashMap<String, Integer> selPredCols = this.schParse.fetchMINCSelPredCols();
     int selBitMapSize = selPredCols.size() * this.selPredOpList.length;
     BitSet bitVector = new BitSet(selBitMapSize);
-    for (Column c : this.selPredOps.keySet()) {
+    for (String c : this.selPredOps.keySet()) {
       ArrayList<String> opValList = this.selPredOps.get(c);
       String selColFullName = retrieveFullColumnName(c);
       int baseIndex = selPredCols.get(selColFullName) * this.selPredOpList.length;
@@ -866,33 +687,19 @@ public class APMFragmentIntent
   public void createFragmentVectors() throws Exception
   {
     createBitVectorForQueryTypes();
-    //System.out.println("this.queryTypeBitMap: "+this.queryTypeBitMap);
     createBitVectorForTables();
-    //System.out.println("this.tableBitMap: "+this.tableBitMap+", length: "+this.tableBitMap.toCharArray().length);
     this.projectionBitMap = createBitVectorForOpColSet(this.projectionColumns);
-    //System.out.println("this.projectionBitMap: "+this.projectionBitMap+", length: "+this.projectionBitMap.toCharArray().length);
     this.AVGBitMap = createBitVectorForOpColSet(this.AVGColumns);
-    //System.out.println("this.AVGBitMap: "+this.AVGBitMap+", length: "+this.AVGBitMap.toCharArray().length);
     this.MINBitMap = createBitVectorForOpColSet(this.MINColumns);
-    //System.out.println("this.MINBitMap: "+this.MINBitMap+", length: "+this.MINBitMap.toCharArray().length);
     this.MAXBitMap = createBitVectorForOpColSet(this.MAXColumns);
-    //System.out.println("this.MAXBitMap: "+this.MAXBitMap+", length: "+this.MAXBitMap.toCharArray().length);
     this.SUMBitMap = createBitVectorForOpColSet(this.SUMColumns);
-    //System.out.println("this.SUMBitMap: "+this.SUMBitMap+", length: "+this.SUMBitMap.toCharArray().length);
 //    this.COUNTBitMap = createBitVectorForOpColSet(this.COUNTColumns);
-    //System.out.println("this.COUNTBitMap: "+this.COUNTBitMap+", length: "+this.COUNTBitMap.toCharArray().length);
-    this.selectionBitMap = createBitVectorForOpColSet(this.selectionColumns);
-    //System.out.println("this.selectionBitMap: "+this.selectionBitMap+", length: "+this.selectionBitMap.toCharArray().length);
+    this.whereBitMap = createBitVectorForOpColSet(this.whereColumns);
     this.groupByBitMap = createBitVectorForOpColSet(this.groupByColumns);
-    //System.out.println("this.groupByBitMap: "+this.groupByBitMap+", length: "+this.groupByBitMap.toCharArray().length);
 //    this.orderByBitMap = createBitVectorForOpColSet(this.orderByColumns);
-    //System.out.println("this.orderByBitMap: "+this.orderByBitMap+", length: "+this.orderByBitMap.toCharArray().length);
     this.havingBitMap = createBitVectorForOpColSet(this.havingColumns);
-    //System.out.println("this.havingBitMap: "+this.havingBitMap+", length: "+this.havingBitMap.toCharArray().length);
     createBitVectorForLimit();
-    //System.out.println("this.limitBitMap: "+this.limitBitMap+", length: "+this.limitBitMap.toCharArray().length);
 //    createBitVectorForJoin();
-    //System.out.println("this.joinPredBitMap: "+this.joinPredicatesBitMap+", length: "+this.joinPredicatesBitMap.toCharArray().length);
     if (this.includeSelOpConst) {
       createBitVectorForSelPredOps();
       createBitVectorForSelPredColRangeBins();
@@ -1297,20 +1104,14 @@ public class APMFragmentIntent
     schParse.fetchSchema(configFile);
     HashMap<String, String> configDict = schParse.getConfigDict();
     boolean includeSelOpConst = Boolean.parseBoolean(configDict.get("MINC_SEL_OP_CONST"));
-    String dataset = configDict.get("MINC_DATASET");
     try {
-
-      //uncomment the following when full run needs to happen on EC2 or on EN4119510L
-      //	readFromRawSessionsFile(dataset, tempLogDir, rawSessFile, intentVectorFile, line, schParse, numThreads, startLineNum, pruneKeepModifyRepeatedQueries, includeSelOpConst);
-
-      String tsvFilePath = "C:/buaa/data/APM/Input/ApmQuerys.tsv"; // TSV 文件路径
+      String tsvFilePath = "input/ApmQuerys.tsv"; // TSV 文件路径
       try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
         CSVParser csvParser = new CSVParser(reader, CSVFormat.TDF.withFirstRecordAsHeader());
         Iterable<CSVRecord> records = csvParser.getRecords();
-
         // 处理标题行
         List<String> headers = csvParser.getHeaderNames();
-        System.out.println("Headers: " + headers);
+        log.info("Headers: " + headers);
         int count=0;
         for (CSVRecord record : records) {
           String query = record.get("query");
@@ -1319,7 +1120,7 @@ public class APMFragmentIntent
           }
           count++;
           String queryIntent = getQueryIntent(query, schParse, includeSelOpConst);
-          System.out.println(count+","+queryIntent.length() + "," + queryIntent);
+          log.info(count+",queryIntent.length="+queryIntent.length() + "," + queryIntent);
         }
       } catch (Exception e) {
         e.printStackTrace();
@@ -1336,36 +1137,6 @@ public class APMFragmentIntent
     query=StringCleaner.cleanString(query);
     query=StringCleaner.correctQuery(query);
     System.out.println("clean query:"+query);
-//    SqlParser.Config config = SqlParser.configBuilder()
-//                                       .setLex(Lex.JAVA)
-//                                       .setParserFactory(SqlParserImpl.FACTORY)
-//                                       .setConformance(SqlConformanceEnum.MYSQL_5)
-//                                       .build();
-//    SqlDialect clickHouseDialect = new ClickHouseDialect();
-    // 创建 Calcite SqlParser.Config 配置对象
-    SqlParser.Config config = SqlParser.configBuilder()
-            .setLex(Lex.JAVA) // ClickHouse方言可能需要LEX设置为Lex.JAVA
-            .setParserFactory(SqlParserImpl.FACTORY)
-            .setConformance(SqlConformanceEnum.LENIENT)
-            .setQuoting(Quoting.BACK_TICK)
-//            .setConformance(ClickHouseSqlDialect.DEFAULT.getConformance()) // 使用 ClickHouse 方言的一致性规则
-            .build();
-    // 创建解析器
-    SqlParser parser = SqlParser.create(query, config);
-    try {
-      // 解析sql
-      SqlNode sqlNode = parser.parseQuery(query);
-      SqlDialect.Context MY_CONTEXT = SqlDialect.EMPTY_CONTEXT
-              .withDatabaseProduct(SqlDialect.DatabaseProduct.CLICKHOUSE)
-//              .withIdentifierQuoteString("`")
-              .withNullCollation(NullCollation.LOW);
-      // 还原某个方言的SQL
-      SqlString sqlString = sqlNode.toSqlString(new ClickHouseSqlDialect(MY_CONTEXT));
-      query = sqlString.getSql();
-      System.out.println("com.clickhouse query:"+query);
-    }catch (Exception e){
-      e.printStackTrace();
-    }
 
     APMFragmentIntent fragmentObj = new APMFragmentIntent(query, schParse, includeSelOpConst, "APM");
     boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();

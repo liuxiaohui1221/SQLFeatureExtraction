@@ -120,5 +120,20 @@ public class TestAstParser {
         System.out.println("failCount:"+ ClickhouseSQLParser.failCount.get());
     }
 
+    @Test
+    public void testSQL3() {
+        String query="SELECT sum(biz) AS biz_RESP, sum(err) AS err_RESP, sum(exception) AS exception_RESP, sum(fail) AS fail_RESP, sum(frustrated) AS frustrated_RESP, sum(tolerated) AS tolerated_RESP, count() AS total_RESP, group FROM dwm_request WHERE (appid = 'pro-api-g10-xingyun') AND (is_model = true) AND (ts <= toDateTime64(1684406399.999, 3)) AND (ts >= toDateTime64(1683801540.000, 3)) GROUP BY group ORDER BY total_RESP DESC LIMIT 0, 5";
+        ClickhouseSQLParser calciteSQLParser = new ClickhouseSQLParser(null);
+        calciteSQLParser.createQueryVector(query);
+        System.out.println("successCount:"+ ClickhouseSQLParser.successCount.get());
+    }
+    @Test
+    public void testSQL4() {
+        String query="select * from viewifpermitted(select message from system.warnings else null('message string'))";
+        ClickhouseSQLParser calciteSQLParser = new ClickhouseSQLParser(null);
+        calciteSQLParser.createQueryVector(query);
+        System.out.println("successCount:"+ ClickhouseSQLParser.successCount.get());
+    }
+
 
 }
