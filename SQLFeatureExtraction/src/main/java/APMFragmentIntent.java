@@ -686,19 +686,19 @@ public class APMFragmentIntent
 
   public void createFragmentVectors() throws Exception
   {
-    createBitVectorForQueryTypes();
-    createBitVectorForTables();
-    this.projectionBitMap = createBitVectorForOpColSet(this.projectionColumns);
-    this.AVGBitMap = createBitVectorForOpColSet(this.AVGColumns);
-    this.MINBitMap = createBitVectorForOpColSet(this.MINColumns);
-    this.MAXBitMap = createBitVectorForOpColSet(this.MAXColumns);
-    this.SUMBitMap = createBitVectorForOpColSet(this.SUMColumns);
+    createBitVectorForQueryTypes();//sql类型4位
+    createBitVectorForTables();//sql中要查询的表，位数为表数量
+    this.projectionBitMap = createBitVectorForOpColSet(this.projectionColumns);//sql中要查询的列，位数为列数量
+    this.AVGBitMap = createBitVectorForOpColSet(this.AVGColumns);//sql中AVG列，位数为列数量
+    this.MINBitMap = createBitVectorForOpColSet(this.MINColumns);//sql中MIN列，位数为列数量
+    this.MAXBitMap = createBitVectorForOpColSet(this.MAXColumns);//sql中MAX列，位数为列数量
+    this.SUMBitMap = createBitVectorForOpColSet(this.SUMColumns);//sql中SUM列，位数为列数量
 //    this.COUNTBitMap = createBitVectorForOpColSet(this.COUNTColumns);
-    this.whereBitMap = createBitVectorForOpColSet(this.whereColumns);
-    this.groupByBitMap = createBitVectorForOpColSet(this.groupByColumns);
-//    this.orderByBitMap = createBitVectorForOpColSet(this.orderByColumns);
-    this.havingBitMap = createBitVectorForOpColSet(this.havingColumns);
-    createBitVectorForLimit();
+    this.whereBitMap = createBitVectorForOpColSet(this.whereColumns);//sql中where条件，位数为列数量
+    this.groupByBitMap = createBitVectorForOpColSet(this.groupByColumns);//sql中group by，位数为列数量
+    this.orderByBitMap = createBitVectorForOpColSet(this.orderByColumns);
+    this.havingBitMap = createBitVectorForOpColSet(this.havingColumns);//sql中having，位数为列数量
+    createBitVectorForLimit();//sql中limit，1位
 //    createBitVectorForJoin();
     if (this.includeSelOpConst) {
       createBitVectorForSelPredOps();

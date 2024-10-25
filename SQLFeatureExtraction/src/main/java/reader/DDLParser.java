@@ -48,6 +48,9 @@ public class DDLParser
       if (tableName.contains("_cluster")) {
         tableName = tableName.substring(0, tableName.indexOf("_cluster"));
       }
+      if(tableName.endsWith("_view")){
+        tableName = tableName.substring(0,tableName.length()-5);
+      }
       if (columnsMatcher.find()) {
         String columnsStr = columnsMatcher.group(0);
 //        System.out.println("columnsStr:" + columnsStr);

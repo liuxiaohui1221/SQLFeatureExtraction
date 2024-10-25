@@ -63,23 +63,6 @@ public class ClickhouseSQLParser {
     public void createQueryVector(String query){
         this.query=query;
         try {
-            /*SqlParser.Config config = SqlParser.configBuilder()
-                    .setLex(Lex.JAVA) // ClickHouse方言可能需要LEX设置为Lex.JAVA
-                    .setParserFactory(SqlParserImpl.FACTORY)
-                    .setConformance(SqlConformanceEnum.BABEL)
-                    .build();
-            // 创建解析器
-            SqlParser parser = SqlParser.create(query, config);
-            // 解析sql
-            SqlNode sqlNode = parser.parseQuery(query);
-            SqlDialect.Context MY_CONTEXT = SqlDialect.EMPTY_CONTEXT
-                    .withDatabaseProduct(SqlDialect.DatabaseProduct.CLICKHOUSE)
-                    .withIdentifierQuoteString("`")
-                    .withNullCollation(NullCollation.LOW);
-            // 还原某个方言的SQL
-            SqlString sqlString = sqlNode.toSqlString(new ClickHouseSqlDialect(MY_CONTEXT));
-            query = sqlString.getSql();
-            System.out.println("com.clickhouse query:"+query);*/
             AstParser astParser = new AstParser();
             Object parsedResult = astParser.parse(query);
             if(parsedResult instanceof SelectUnionQuery){
@@ -87,8 +70,6 @@ public class ClickhouseSQLParser {
             }else{
                 System.out.println("not select query:"+query);
             }
-            //查询字段和聚合函数向量表征
-
             successCount.incrementAndGet();
         }catch (Exception e){
             e.printStackTrace();
@@ -117,6 +98,9 @@ public class ClickhouseSQLParser {
         if(name.endsWith("_cluster")){
             name = name.substring(0,name.length()-8);
         }
+        if(name.endsWith("_view")){
+            name = name.substring(0,name.length()-5);
+        }
         System.out.println("table:"+name);
         fromTables.add(name);
         //抽取select字段，聚合函数
@@ -138,6 +122,14 @@ public class ClickhouseSQLParser {
                 for (ColumnExpr expr : groupByExprs)
                     extractedColumnExpr(expr,groupByColumns);
             }
+        }
+        //抽取order by字段
+        OrderByClause orderByClause = statement.getOrderByClause();
+        if(orderByClause!=null){
+            List<OrderExpr> orderByExprs = orderByClause.getOrderExprs();
+            if(orderByExprs != null)
+                for (OrderExpr expr : orderByExprs)
+                    extractedColumnExpr(expr.getExpr(),orderByColumns);
         }
     }
 
