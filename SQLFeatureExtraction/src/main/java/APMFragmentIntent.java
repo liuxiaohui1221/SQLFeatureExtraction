@@ -1104,6 +1104,7 @@ public class APMFragmentIntent
     schParse.fetchSchema(configFile);
     HashMap<String, String> configDict = schParse.getConfigDict();
     boolean includeSelOpConst = Boolean.parseBoolean(configDict.get("MINC_SEL_OP_CONST"));
+    List<String> sqlList = new ArrayList<>();
     try {
       String tsvFilePath = "input/ApmQuerys.tsv"; // TSV 文件路径
       try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
@@ -1121,6 +1122,7 @@ public class APMFragmentIntent
           count++;
           String queryIntent = getQueryIntent(query, schParse, includeSelOpConst);
           log.info(count+",queryIntent.length="+queryIntent.length() + "," + queryIntent);
+          sqlList.add("Session 0, Query " + count + "; OrigQuery:" + query + ";" + queryIntent);
         }
       } catch (Exception e) {
         e.printStackTrace();
@@ -1129,6 +1131,7 @@ public class APMFragmentIntent
     catch (Exception e) {
       e.printStackTrace();
     }
+    Util.writeSQLListToFile(sqlList, "output/ApmQueryIntent.txt");
   }
 
   public static String getQueryIntent(String query, SchemaParser schParse, boolean includeSelOpConst)

@@ -1,4 +1,8 @@
 package toolsForMetrics;
+
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -370,5 +374,23 @@ import net.sf.jsqlparser.expression.TimeValue;
 
     }
 
+	/**
+	 * 将SQL语句集合按行写入到文本文件中。
+	 *
+	 * @param sqlList  SQL语句集合
+	 * @param filePath 文件路径
+	 */
+	public static void writeSQLListToFile(List<String> sqlList, String filePath)
+	{
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+			for (String sql : sqlList) {
+				writer.write(sql);
+				writer.newLine(); // 写入换行符，以便每条SQL语句在新的一行
+			}
+		}
+		catch (IOException e) {
+			e.printStackTrace();
+		}
+	}
 	
 }
