@@ -1,6 +1,5 @@
 package com.clickhouse;
 
-import booleanFormulaEntities.BooleanNormalClause;
 import com.clickhouse.parser.AstParser;
 import com.clickhouse.parser.ast.*;
 import com.clickhouse.parser.ast.expr.*;
@@ -17,6 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ClickhouseSQLParser {
     public static final AtomicInteger successCount = new AtomicInteger(0);
     public static final AtomicInteger failCount = new AtomicInteger(0);
+    private Integer[] queryGranularitysList;
     private volatile String query;
     private SchemaParser schParse;
     private HashSet<String> selectionColumns = new HashSet<>();
@@ -29,38 +29,25 @@ public class ClickhouseSQLParser {
     private HashSet<String> sumColumns=new HashSet<>();
     private HashSet<String> maxColumns=new HashSet<>();
     private HashSet<String> minColumns=new HashSet<>();
+    private Integer timeOffsetWhere=null;
+    private Integer timeRangeWhere=null;
 
-    //    public static void main(String[] args) {
-//        CalciteSQLParser calciteSQLParser = new CalciteSQLParser();
-//        String tsvFilePath = "input/ApmQuerys.tsv"; // TSV 文件路径
-//        try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
-//            CSVParser csvParser = new CSVParser(reader, CSVFormat.TDF.withFirstRecordAsHeader());
-//            Iterable<CSVRecord> records = csvParser.getRecords();
-//
-//            // 处理标题行
-//            List<String> headers = csvParser.getHeaderNames();
-//            System.out.println("Headers: " + headers);
-//            int count=0;
-//            for (CSVRecord record : records) {
-//                String query = record.get("query");
-//                if(!ExcelReader.filterSql(query)){
-//                    continue;
-//                }
-//                count++;
-//                System.out.println("origin query:"+query);
-//                calciteSQLParser.createQueryVector(query);
-//            }
-//        } catch (Exception e) {
-//            e.printStackTrace();
-//        }
-//        System.out.println("successCount:"+successCount.get());
-//        System.out.println("failCount:"+failCount.get());
-//    }
+    private long eventTime;
+    private long tsStartSecond;
+    private long tsEndSecond;
+    private boolean[] queryGranularitys;//分别对分钟，小时，天，月，年等粒度取整后的值取0或1，当sql中没有时间聚合粒度时，全为0
+
+    public ClickhouseSQLParser(SchemaParser schParse, Integer[] queryGranularitysList){
+        this.schParse=schParse;
+        this.queryGranularitysList=queryGranularitysList;
+        queryGranularitys=new boolean[queryGranularitysList.length];
+    }
     public ClickhouseSQLParser(SchemaParser schParse){
         this.schParse=schParse;
     }
 
-    public void createQueryVector(String query){
+    public void createQueryVector(String query,long eventTime){
+        this.eventTime=eventTime;
         this.query=query;
         try {
             AstParser astParser = new AstParser();
@@ -114,6 +101,7 @@ public class ClickhouseSQLParser {
         if(whereClause!=null){
             extractedWhereClause(whereClause);
         }
+        timeRangeWhere=(int) (tsEndSecond-tsStartSecond);
         //抽取group by字段
         GroupByClause groupByClause = statement.getGroupByClause();
         if(groupByClause!=null){
@@ -170,6 +158,60 @@ public class ClickhouseSQLParser {
                             maxColumns.add(aggColExpr.getIdentifier().getName());
                         }else if("min".equals(colExpr.getName().getName())){
                             minColumns.add(aggColExpr.getIdentifier().getName());
+                        }else if("ts".equals(aggColExpr.getIdentifier().getName())){
+                            if("greaterOrEquals".equals(colExpr.getName().getName())||"lessOrEquals".equals(colExpr.getName().getName())){
+                                if(args.get(1) instanceof FunctionColumnExpr){
+                                    FunctionColumnExpr funcExpr = (FunctionColumnExpr)args.get(1);
+                                    if("todatetime64".equals(funcExpr.getName().getName())) {
+                                        ColumnExpr columnExpr = funcExpr.getArgs().get(0);
+                                        if (columnExpr instanceof LiteralColumnExpr) {
+                                            LiteralColumnExpr literalColumnExpr = (LiteralColumnExpr) columnExpr;
+                                            String startStr = literalColumnExpr.getLiteral().asStringWithoutQuote();
+                                            if("greaterOrEquals".equals(colExpr.getName().getName())){
+                                                tsStartSecond=Long.parseLong(startStr.substring(0,10));
+                                            }else{
+                                                tsEndSecond=Long.parseLong(startStr.substring(0,10));
+                                                if(eventTime!=0){
+                                                    timeOffsetWhere=(int) (eventTime-tsEndSecond);
+                                                }
+                                            }
+
+                                        }
+                                    }
+                                }
+                            }else if("tostartofinterval".equalsIgnoreCase(colExpr.getName().getName())){
+                                if(args.get(1) instanceof FunctionColumnExpr){
+                                    FunctionColumnExpr funcExpr = (FunctionColumnExpr)args.get(1);
+                                    if("tointervalday".equalsIgnoreCase(funcExpr.getName().getName())) {
+                                        LiteralColumnExpr columnExpr = (LiteralColumnExpr) funcExpr.getArgs().get(0);
+                                        Integer num= Integer.valueOf(columnExpr.getLiteral().asStringWithoutQuote());
+                                        if(num>=1){
+                                            queryGranularitys[4]=true;//1day
+                                        }
+                                        if(num/7>=1){
+                                            queryGranularitys[5]=true;//1 week
+                                        }
+                                        if(num/30>=1){
+                                            queryGranularitys[6]=true;//1 month
+                                        }
+                                        if (num/(3*30)>=1){
+                                            queryGranularitys[7]=true;//3 month
+                                        }
+                                        if(num/(365)>=1){
+                                            queryGranularitys[8]=true;//1 year
+                                        }
+                                    }else if ("tointervalhour".equalsIgnoreCase(funcExpr.getName().getName())) {
+                                        queryGranularitys[3]=true;
+                                    }else if ("tointervalminute".equalsIgnoreCase(funcExpr.getName().getName())) {
+                                        queryGranularitys[0]=true;
+                                    }else if ("tointervalmonth".equalsIgnoreCase(funcExpr.getName().getName())) {
+                                        queryGranularitys[6]=true;
+                                    }else if ("tointervalyear".equalsIgnoreCase(funcExpr.getName().getName())){
+                                        queryGranularitys[8]=true;
+                                    }
+                                }
+
+                            }
                         }
                     }
                     for (ColumnExpr arg : args) {

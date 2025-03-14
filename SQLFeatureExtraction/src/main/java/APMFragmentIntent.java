@@ -33,16 +33,16 @@ import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.BitSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @Slf4j
 public class APMFragmentIntent
 {
+  public static final Integer[] queryGranularitysList=new Integer[]{1*60, 5*60, 30*60, 60*60, 24*3600, 7*24*3600, 30*24*3600, 3*30*24*3600, 365*24*3600};
+  public static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy/M/d HH:mm");
+  private final long eventTime;
+
   String originalSQL;
   String intentBitVector;
   StringBuilder intentBitVecBuilder;
@@ -85,16 +85,23 @@ public class APMFragmentIntent
   boolean includeSelOpConst; // decide whether or not to include selOpConst
   String dataset; // dataset info
   ClickhouseSQLParser sqlParser;
+  private Integer timeOffsetWhere;
+  private Integer timeRangeWhere;
+  private String timeOffsetBitMap;
+  private String timeRangeBitMap;
+  private String queryGranularityBitMap;
+  private boolean[] queryGranularitys;
 
-  public APMFragmentIntent(String originalSQL, SchemaParser schParse, boolean includeSelOpConst, String dataset)
+  public APMFragmentIntent(String originalSQL, long eventTime,SchemaParser schParse, boolean includeSelOpConst, String dataset)
       throws Exception
   {
     this.originalSQL = originalSQL.toLowerCase();
+    this.eventTime = eventTime;
     this.schParse = schParse;
     this.includeSelOpConst = includeSelOpConst;
     this.dataset = dataset;
     Global.tableAlias = new HashMap<String, String>();
-    sqlParser = new ClickhouseSQLParser(schParse);
+    sqlParser = new ClickhouseSQLParser(schParse,queryGranularitysList);
     this.intentBitVector = null;
     this.intentBitVecBuilder = new StringBuilder();
     this.queryType = "select";
@@ -147,7 +154,7 @@ public class APMFragmentIntent
     BufferedWriter bw = new BufferedWriter(new FileWriter(fileName, true));
     bw.append("query:" + query + "\n");
     bw.append("intentVector:" + this.intentBitVector + "\n");
-    bw.append("queryTypeBitMap:" + this.queryTypeBitMap + "\n");
+//    bw.append("queryTypeBitMap:" + this.queryTypeBitMap + "\n");
     bw.append("TableBitMap:" + this.tableBitMap + "\n");
     bw.append("SelectionBitMap:" + this.whereBitMap + "\n");
     bw.append("GroupByBitMap:" + this.groupByBitMap + "\n");
@@ -174,23 +181,29 @@ public class APMFragmentIntent
     System.out.println("Printing FragmentBitVector");
     System.out.println(this.intentBitVector);
     System.out.println("----OPERATOR-WISE FRAGMENT------");
-    System.out.println("queryTypeBitMap: " + this.queryTypeBitMap);
-    System.out.println("TableBitMap: " + this.tableBitMap);
-    System.out.println("SelectionBitMap:" + this.whereBitMap);
-    System.out.println("OrderByBitMap: " + this.orderByBitMap);
-    System.out.println("ProjectionBitMap: " + this.projectionBitMap);
-    System.out.println("HavingBitMap: " + this.havingBitMap);
-    System.out.println("JoinPredicatesBitMap: " + this.joinPredicatesBitMap);
-    System.out.println("LimitBitMap: " + this.limitBitMap);
-    System.out.println("MINBitMap: " + this.MINBitMap);
-    System.out.println("MAXBitMap: " + this.MAXBitMap);
-    System.out.println("AVGBitMap: " + this.AVGBitMap);
-    System.out.println("SUMBitMap: " + this.SUMBitMap);
-    System.out.println("COUNTBitMap: " + this.COUNTBitMap);
+//    System.out.println("queryTypeBitMap: " + this.queryTypeBitMap);
+    System.out.println("1.TableBitMap: " + this.tableBitMap);
+    System.out.println("2.ProjectionBitMap(Select): " + this.projectionBitMap);
+    System.out.println("3.AVGBitMap: " + this.AVGBitMap);
+    System.out.println("3.MINBitMap: " + this.MINBitMap);
+    System.out.println("3.MAXBitMap: " + this.MAXBitMap);
+    System.out.println("3.SUMBitMap: " + this.SUMBitMap);
+
+    System.out.println("4.SelectionBitMap(Where):" + this.whereBitMap);
+    System.out.println("5.GroupByBitMap: " + this.groupByBitMap);
+    System.out.println("6.OrderByBitMap: " + this.orderByBitMap);
+    System.out.println("7.HavingBitMap: " + this.havingBitMap);
+//    System.out.println("JoinPredicatesBitMap: " + this.joinPredicatesBitMap);
+    System.out.println("8.LimitBitMap: " + this.limitBitMap);
+//    System.out.println("COUNTBitMap: " + this.COUNTBitMap);
     if (this.includeSelOpConst) {
       System.out.println("selPredOpBitMap:" + this.selPredOpBitMap);
       System.out.println("selPredColRangeBinBitMap:" + this.selPredColRangeBinBitMap);
     }
+    System.out.println("9or10.TimeOffsetGranBit:"+this.timeOffsetBitMap);
+    System.out.println("11.TimeRangeGranBit:"+this.timeRangeBitMap);
+    System.out.println("12.QueryGranularity:"+this.queryGranularityBitMap);
+    System.out.println("----OPERATOR-WISE FRAGMENT OVER!------");
   }
 
   public void populateOperatorObjects() throws Exception
@@ -208,6 +221,10 @@ public class APMFragmentIntent
     this.MAXColumns = sqlParser.getMaxColumns();
 //    this.AVGColumns = sqlParser.getAVGColumns();
     this.SUMColumns = sqlParser.getSumColumns();
+    //新增特征
+    this.timeOffsetWhere = sqlParser.getTimeOffsetWhere();
+    this.timeRangeWhere = sqlParser.getTimeRangeWhere();
+    this.queryGranularitys = sqlParser.getQueryGranularitys();
 //    this.COUNTColumns = sqlParser.getCOUNTColumns();
 //    if (this.includeSelOpConst) {
 //      this.selPredOps = sqlParser.getSelPredOps();
@@ -217,7 +234,7 @@ public class APMFragmentIntent
 
   public void parseQuery() throws Exception
   {
-    sqlParser.createQueryVector(this.originalSQL);
+    sqlParser.createQueryVector(this.originalSQL,this.eventTime);
     populateOperatorObjects();
   }
 
@@ -247,15 +264,9 @@ public class APMFragmentIntent
     }
   }
 
-  public void appendToBitVectorString(String b) throws Exception
+  public void appendToBitVectorString(String b)
   {
-    if (this.intentBitVecBuilder.length() == 0) {
-      System.out.println("Invalid intent bitvector!!");
-      //	System.exit(0);
-    } else {
-      this.intentBitVecBuilder.append(b);
-      //this.intentBitVector += b;
-    }
+    this.intentBitVecBuilder.append(b);
   }
 
   public void createBitVectorForTables() throws Exception
@@ -686,15 +697,15 @@ public class APMFragmentIntent
 
   public void createFragmentVectors() throws Exception
   {
-    createBitVectorForQueryTypes();//sql类型4位
-    createBitVectorForTables();//sql中要查询的表，位数为表数量
-    this.projectionBitMap = createBitVectorForOpColSet(this.projectionColumns);//sql中要查询的列，位数为列数量
-    this.AVGBitMap = createBitVectorForOpColSet(this.AVGColumns);//sql中AVG列，位数为列数量
-    this.MINBitMap = createBitVectorForOpColSet(this.MINColumns);//sql中MIN列，位数为列数量
-    this.MAXBitMap = createBitVectorForOpColSet(this.MAXColumns);//sql中MAX列，位数为列数量
-    this.SUMBitMap = createBitVectorForOpColSet(this.SUMColumns);//sql中SUM列，位数为列数量
+//    createBitVectorForQueryTypes();//sql类型4位
+    createBitVectorForTables();//sql中要查询的表，位数为表数量---from
+    this.projectionBitMap = createBitVectorForOpColSet(this.projectionColumns);//sql中要查询的列，位数为列数量---select
+    this.AVGBitMap = createBitVectorForOpColSet(this.AVGColumns);//sql中AVG列，位数为列数量---Agg avg
+    this.MINBitMap = createBitVectorForOpColSet(this.MINColumns);//sql中MIN列，位数为列数量---Agg min
+    this.MAXBitMap = createBitVectorForOpColSet(this.MAXColumns);//sql中MAX列，位数为列数量---Agg max
+    this.SUMBitMap = createBitVectorForOpColSet(this.SUMColumns);//sql中SUM列，位数为列数量---Agg sum
 //    this.COUNTBitMap = createBitVectorForOpColSet(this.COUNTColumns);
-    this.whereBitMap = createBitVectorForOpColSet(this.whereColumns);//sql中where条件，位数为列数量
+    this.whereBitMap = createBitVectorForOpColSet(this.whereColumns);//selections---sql中where条件，位数为列数量
     this.groupByBitMap = createBitVectorForOpColSet(this.groupByColumns);//sql中group by，位数为列数量
     this.orderByBitMap = createBitVectorForOpColSet(this.orderByColumns);
     this.havingBitMap = createBitVectorForOpColSet(this.havingColumns);//sql中having，位数为列数量
@@ -704,7 +715,37 @@ public class APMFragmentIntent
       createBitVectorForSelPredOps();
       createBitVectorForSelPredColRangeBins();
     }
+    //where Time offset and range
+    this.timeOffsetBitMap = createBitVectorForTime(this.timeOffsetWhere);
+    this.timeRangeBitMap = createBitVectorForTime(this.timeRangeWhere);
+    //query granularity
+    this.queryGranularityBitMap = createBitVectorForQueryGranularity(this.queryGranularitys);
     this.intentBitVector = this.intentBitVecBuilder.toString();
+  }
+
+  private String createBitVectorForQueryGranularity(boolean[] queryGranularitys) {
+    String vec="";
+    for (boolean granularity:queryGranularitys){
+      if (granularity)
+        vec+="1";
+      else
+        vec+="0";
+    }
+    this.appendToBitVectorString(vec);
+    return vec;
+  }
+
+  private String createBitVectorForTime(Integer timeOffsetSecondWhere) {
+    String vec="";
+    for (Integer granularity:queryGranularitysList){
+      if (timeOffsetSecondWhere/granularity>0){
+        vec+="1";
+      }else{
+        vec+="0";
+      }
+    }
+    this.appendToBitVectorString(vec);
+    return vec;
   }
 
   public boolean parseQueryAndCreateFragmentVectors() throws Exception
@@ -1106,7 +1147,8 @@ public class APMFragmentIntent
     boolean includeSelOpConst = Boolean.parseBoolean(configDict.get("MINC_SEL_OP_CONST"));
     List<String> sqlList = new ArrayList<>();
     try {
-      String tsvFilePath = "input/ApmQuerys.tsv"; // TSV 文件路径
+//      String tsvFilePath = "input/ApmQuerys.tsv"; // TSV 文件路径
+      String tsvFilePath = "input/testQuerys.tsv"; // TSV 文件路径
       try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
         CSVParser csvParser = new CSVParser(reader, CSVFormat.TDF.withFirstRecordAsHeader());
         Iterable<CSVRecord> records = csvParser.getRecords();
@@ -1120,7 +1162,9 @@ public class APMFragmentIntent
              continue;
           }
           count++;
-          String queryIntent = getQueryIntent(query, schParse, includeSelOpConst);
+          String eventTimeStr=record.get("event_time");
+          long eventTimeSec=getTimeMillis(eventTimeStr)/1000;
+          String queryIntent = getQueryIntent(query, eventTimeSec,schParse, includeSelOpConst);
           log.info(count+",queryIntent.length="+queryIntent.length() + "," + queryIntent);
           sqlList.add("Session 0, Query " + count + "; OrigQuery:" + query + ";" + queryIntent);
         }
@@ -1134,14 +1178,26 @@ public class APMFragmentIntent
     Util.writeSQLListToFile(sqlList, "output/ApmQueryIntent.txt");
   }
 
-  public static String getQueryIntent(String query, SchemaParser schParse, boolean includeSelOpConst)
+  public static long getTimeMillis(String timeString){
+    long timestamp = 0;
+    try {
+      Date date = sdf.parse(timeString);
+      timestamp = date.getTime();
+//      System.out.println("Timestamp: " + timestamp);
+    } catch (java.text.ParseException e) {
+      throw new RuntimeException(e);
+    }
+    return timestamp;
+  }
+
+  public static String getQueryIntent(String query,long eventTime, SchemaParser schParse, boolean includeSelOpConst)
       throws Exception
   {
     query=StringCleaner.cleanString(query);
     query=StringCleaner.correctQuery(query);
     System.out.println("clean query:"+query);
 
-    APMFragmentIntent fragmentObj = new APMFragmentIntent(query, schParse, includeSelOpConst, "APM");
+    APMFragmentIntent fragmentObj = new APMFragmentIntent(query, eventTime,schParse, includeSelOpConst, "APM");
     boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
     if (validQuery) {
       fragmentObj.printIntentVector();
