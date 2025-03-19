@@ -29,9 +29,9 @@ public class DDLParser
       Map<String, List<String>> tableColTypesMap
   )
   {
-    ddl = ddl.replaceAll("\n", "");
-    String tableNamePattern = "CREATE TABLE IF NOT EXISTS ([^\\.]+)\\.(\\w+)";
-    String columnsPattern = "CREATE TABLE.*\\(.*\\)";
+    ddl = ddl.toLowerCase().replaceAll("\n", "");
+    String tableNamePattern = "create table if not exists ([^\\.]+)\\.(\\w+)";
+    String columnsPattern = "create table.*\\(.*\\)";
 
     Pattern tablePattern = Pattern.compile(tableNamePattern);
     Pattern columnsPatternCompile = Pattern.compile(columnsPattern);
@@ -54,9 +54,9 @@ public class DDLParser
       if (columnsMatcher.find()) {
         String columnsStr = columnsMatcher.group(0);
 //        System.out.println("columnsStr:" + columnsStr);
-        int end = columnsStr.lastIndexOf(") ENGINE") == -1
+        int end = columnsStr.lastIndexOf(") engine") == -1
                   ? columnsStr.lastIndexOf(")")
-                  : columnsStr.lastIndexOf(") ENGINE");
+                  : columnsStr.lastIndexOf(") engine");
         columnsStr = columnsStr.substring(columnsStr.indexOf("(") + 1, end);
         //columns按逗号分隔
         columnsStr = columnsStr.replaceAll("`", "");

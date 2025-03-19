@@ -1,6 +1,7 @@
 package toolsForMetrics;
 
 import java.io.BufferedWriter;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -380,9 +381,15 @@ import net.sf.jsqlparser.expression.TimeValue;
 	 * @param sqlList  SQL语句集合
 	 * @param filePath 文件路径
 	 */
-	public static void writeSQLListToFile(List<String> sqlList, String filePath)
+	public static void writeSQLListToFile(List<String> sqlList, String outputdir,String filePath)
 	{
-		try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath))) {
+		File outputDir = new File(outputdir);
+		// 确保 output 目录存在
+		if (!outputDir.exists() && !outputDir.mkdirs()) {
+			throw new IllegalStateException("Cannot create output directory.");
+		}
+		System.out.println("write to outputdir:"+outputdir+"/"+filePath);
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputdir+"/"+filePath))) {
 			for (String sql : sqlList) {
 				writer.write(sql);
 				writer.newLine(); // 写入换行符，以便每条SQL语句在新的一行

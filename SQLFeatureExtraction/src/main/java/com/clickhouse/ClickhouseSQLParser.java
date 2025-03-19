@@ -23,12 +23,13 @@ public class ClickhouseSQLParser {
     private List<String> fromTables = new ArrayList<>();
     private HashSet<String> whereColumns=new HashSet<>();
     private HashSet<String> groupByColumns= new HashSet<>();
-    private HashSet<String> havingColumns=new HashSet<>();
+//    private HashSet<String> havingColumns=new HashSet<>();
     private HashSet<String> orderByColumns=new HashSet<>();
     private HashMap<String,ColumnExpr> colAliases=new HashMap<>();
     private HashSet<String> sumColumns=new HashSet<>();
     private HashSet<String> maxColumns=new HashSet<>();
     private HashSet<String> minColumns=new HashSet<>();
+    private HashSet<String> avgColumns=new HashSet<>();
     private Integer timeOffsetWhere=null;
     private Integer timeRangeWhere=null;
 
@@ -158,6 +159,8 @@ public class ClickhouseSQLParser {
                             maxColumns.add(aggColExpr.getIdentifier().getName());
                         }else if("min".equals(colExpr.getName().getName())){
                             minColumns.add(aggColExpr.getIdentifier().getName());
+                        }else if("avg".equals(colExpr.getName().getName())){
+                            avgColumns.add(aggColExpr.getIdentifier().getName());
                         }else if("ts".equals(aggColExpr.getIdentifier().getName())){
                             if("greaterOrEquals".equals(colExpr.getName().getName())||"lessOrEquals".equals(colExpr.getName().getName())){
                                 if(args.get(1) instanceof FunctionColumnExpr){

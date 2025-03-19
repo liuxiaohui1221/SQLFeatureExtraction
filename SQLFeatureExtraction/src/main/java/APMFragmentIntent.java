@@ -213,16 +213,20 @@ public class APMFragmentIntent
     this.groupByColumns = sqlParser.getGroupByColumns();
     this.whereColumns = sqlParser.getWhereColumns();
 //    this.havingColumns = sqlParser.getHavingColumns();
-//    this.orderByColumns = sqlParser.getOrderByColumns();
+    this.orderByColumns = sqlParser.getOrderByColumns();
     this.projectionColumns = sqlParser.getSelectionColumns();
 //    this.joinPredicates = sqlParser.getJoinPredicates();
 //    this.limitList = sqlParser.getLimitList();
     this.MINColumns = sqlParser.getMinColumns();
     this.MAXColumns = sqlParser.getMaxColumns();
-//    this.AVGColumns = sqlParser.getAVGColumns();
+    this.AVGColumns = sqlParser.getAvgColumns();
     this.SUMColumns = sqlParser.getSumColumns();
     //新增特征
     this.timeOffsetWhere = sqlParser.getTimeOffsetWhere();
+    if(this.timeOffsetWhere==null){
+      System.out.println("timeOffsetWhere is null!"+sqlParser.getQuery());
+      return;
+    }
     this.timeRangeWhere = sqlParser.getTimeRangeWhere();
     this.queryGranularitys = sqlParser.getQueryGranularitys();
 //    this.COUNTColumns = sqlParser.getCOUNTColumns();
@@ -264,12 +268,13 @@ public class APMFragmentIntent
     }
   }
 
-  public void appendToBitVectorString(String b)
+  public String appendToBitVectorString(String b)
   {
     this.intentBitVecBuilder.append(b);
+    return b;
   }
 
-  public void createBitVectorForTables() throws Exception
+  public String createBitVectorForTables() throws Exception
   {
     HashMap<String, Integer> MINCTables = this.schParse.fetchMINCTables();
     BitSet b = new BitSet(MINCTables.size());
@@ -283,7 +288,7 @@ public class APMFragmentIntent
       }
     }
     this.tableBitMap = toString(b, MINCTables.size());
-    appendToBitVectorString(this.tableBitMap);
+    return appendToBitVectorString(this.tableBitMap);
   }
 
   public boolean checkIfTableExists(String tableName) throws Exception
@@ -695,10 +700,12 @@ public class APMFragmentIntent
     return;
   }
 
-  public void createFragmentVectors() throws Exception
+  public void createFragmentVectors(boolean ignoreTable) throws Exception
   {
 //    createBitVectorForQueryTypes();//sql类型4位
-    createBitVectorForTables();//sql中要查询的表，位数为表数量---from
+    if(ignoreTable){
+      createBitVectorForTables();//sql中要查询的表，位数为表数量---from
+    }
     this.projectionBitMap = createBitVectorForOpColSet(this.projectionColumns);//sql中要查询的列，位数为列数量---select
     this.AVGBitMap = createBitVectorForOpColSet(this.AVGColumns);//sql中AVG列，位数为列数量---Agg avg
     this.MINBitMap = createBitVectorForOpColSet(this.MINColumns);//sql中MIN列，位数为列数量---Agg min
@@ -708,8 +715,8 @@ public class APMFragmentIntent
     this.whereBitMap = createBitVectorForOpColSet(this.whereColumns);//selections---sql中where条件，位数为列数量
     this.groupByBitMap = createBitVectorForOpColSet(this.groupByColumns);//sql中group by，位数为列数量
     this.orderByBitMap = createBitVectorForOpColSet(this.orderByColumns);
-    this.havingBitMap = createBitVectorForOpColSet(this.havingColumns);//sql中having，位数为列数量
-    createBitVectorForLimit();//sql中limit，1位
+//    this.havingBitMap = createBitVectorForOpColSet(this.havingColumns);//sql中having，位数为列数量
+//    createBitVectorForLimit();//sql中limit，1位
 //    createBitVectorForJoin();
     if (this.includeSelOpConst) {
       createBitVectorForSelPredOps();
@@ -748,7 +755,7 @@ public class APMFragmentIntent
     return vec;
   }
 
-  public boolean parseQueryAndCreateFragmentVectors() throws Exception
+  public boolean parseQueryAndCreateFragmentVectors(boolean ignoreTables) throws Exception
   {
     if (this.queryType.equals("select")
         || this.queryType.equals("update")
@@ -756,7 +763,10 @@ public class APMFragmentIntent
         || this.queryType.equals("delete")) {
       try {
         this.parseQuery();
-        this.createFragmentVectors();
+        if(this.timeOffsetWhere==null){
+          return false;
+        }
+        this.createFragmentVectors(ignoreTables);
       }
       catch (Exception e) {
         e.printStackTrace();
@@ -1147,8 +1157,8 @@ public class APMFragmentIntent
     boolean includeSelOpConst = Boolean.parseBoolean(configDict.get("MINC_SEL_OP_CONST"));
     List<String> sqlList = new ArrayList<>();
     try {
-//      String tsvFilePath = "input/ApmQuerys.tsv"; // TSV 文件路径
-      String tsvFilePath = "input/testQuerys.tsv"; // TSV 文件路径
+      String tsvFilePath = "input/ApmQuerys.tsv"; // TSV 文件路径
+//      String tsvFilePath = "input/testQuerys.tsv"; // TSV 文件路径
       try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
         CSVParser csvParser = new CSVParser(reader, CSVFormat.TDF.withFirstRecordAsHeader());
         Iterable<CSVRecord> records = csvParser.getRecords();
@@ -1163,8 +1173,8 @@ public class APMFragmentIntent
           }
           count++;
           String eventTimeStr=record.get("event_time");
-          long eventTimeSec=getTimeMillis(eventTimeStr)/1000;
-          String queryIntent = getQueryIntent(query, eventTimeSec,schParse, includeSelOpConst);
+          long eventTimeSec=getTimeMills(eventTimeStr)/1000;
+          String queryIntent = getQueryIntent(query, eventTimeSec,schParse, includeSelOpConst,false);
           log.info(count+",queryIntent.length="+queryIntent.length() + "," + queryIntent);
           sqlList.add("Session 0, Query " + count + "; OrigQuery:" + query + ";" + queryIntent);
         }
@@ -1175,10 +1185,10 @@ public class APMFragmentIntent
     catch (Exception e) {
       e.printStackTrace();
     }
-    Util.writeSQLListToFile(sqlList, "output/ApmQueryIntent.txt");
+    Util.writeSQLListToFile(sqlList, "output","ApmQueryIntent.txt");
   }
 
-  public static long getTimeMillis(String timeString){
+  public static long getTimeMills(String timeString){
     long timestamp = 0;
     try {
       Date date = sdf.parse(timeString);
@@ -1190,7 +1200,7 @@ public class APMFragmentIntent
     return timestamp;
   }
 
-  public static String getQueryIntent(String query,long eventTime, SchemaParser schParse, boolean includeSelOpConst)
+  public static String getQueryIntent(String query,long eventTime, SchemaParser schParse, boolean includeSelOpConst,boolean ignoreTables)
       throws Exception
   {
     query=StringCleaner.cleanString(query);
@@ -1198,10 +1208,15 @@ public class APMFragmentIntent
     System.out.println("clean query:"+query);
 
     APMFragmentIntent fragmentObj = new APMFragmentIntent(query, eventTime,schParse, includeSelOpConst, "APM");
-    boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors();
+    boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors(ignoreTables);
     if (validQuery) {
-      fragmentObj.printIntentVector();
-      fragmentObj.writeIntentVectorToTempFile(query);
+//      if(!ignoreTables){
+        fragmentObj.printIntentVector();
+        fragmentObj.writeIntentVectorToTempFile(query);
+//      }
+    }else{
+      System.out.println("Invalid query:"+query);
+      return null;
     }
     String queryIntent = fragmentObj.getIntentBitVector();
     int maxLen = queryIntent.length();
