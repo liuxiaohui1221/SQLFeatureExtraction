@@ -6,6 +6,7 @@ import com.clickhouse.parser.ast.expr.*;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -33,7 +34,7 @@ public class ClickhouseSQLParser {
     private Integer timeOffsetWhere=null;
     private Integer timeRangeWhere=null;
 
-    private long eventTime;
+    private long eventTimeSec;
     private long tsStartSecond;
     private long tsEndSecond;
     private boolean[] queryGranularitys;//分别对分钟，小时，天，月，年等粒度取整后的值取0或1，当sql中没有时间聚合粒度时，全为0
@@ -47,8 +48,8 @@ public class ClickhouseSQLParser {
         this.schParse=schParse;
     }
 
-    public void createQueryVector(String query,long eventTime){
-        this.eventTime=eventTime;
+    public void createQueryVector(String query, long eventTimeSec){
+        this.eventTimeSec=eventTimeSec;
         this.query=query;
         try {
             AstParser astParser = new AstParser();
@@ -174,8 +175,8 @@ public class ClickhouseSQLParser {
                                                 tsStartSecond=Long.parseLong(startStr.substring(0,10));
                                             }else{
                                                 tsEndSecond=Long.parseLong(startStr.substring(0,10));
-                                                if(eventTime!=0){
-                                                    timeOffsetWhere=(int) (eventTime-tsEndSecond);
+                                                if(eventTimeSec!=0){
+                                                    timeOffsetWhere=(int) (eventTimeSec-tsEndSecond);
                                                 }
                                             }
 

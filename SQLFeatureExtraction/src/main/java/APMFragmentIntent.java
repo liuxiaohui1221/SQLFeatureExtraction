@@ -1,24 +1,6 @@
 import com.clickhouse.ClickhouseSQLParser;
 import com.clickhouse.SchemaParser;
 import lombok.extern.slf4j.Slf4j;
-import net.sf.jsqlparser.parser.CCJSqlParser;
-import net.sf.jsqlparser.schema.Column;
-import net.sf.jsqlparser.schema.Table;
-import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.delete.Delete;
-import net.sf.jsqlparser.statement.insert.Insert;
-import net.sf.jsqlparser.statement.select.Select;
-import net.sf.jsqlparser.statement.update.Update;
-import org.apache.calcite.avatica.util.Quoting;
-import org.apache.calcite.config.Lex;
-import org.apache.calcite.config.NullCollation;
-import org.apache.calcite.sql.SqlDialect;
-import org.apache.calcite.sql.SqlNode;
-import org.apache.calcite.sql.dialect.ClickHouseSqlDialect;
-import org.apache.calcite.sql.parser.SqlParser;
-import org.apache.calcite.sql.parser.impl.SqlParserImpl;
-import org.apache.calcite.sql.util.SqlString;
-import org.apache.calcite.sql.validate.SqlConformanceEnum;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -30,10 +12,11 @@ import toolsForMetrics.Util;
 
 import java.io.*;
 import java.net.InetAddress;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -41,7 +24,8 @@ public class APMFragmentIntent
 {
   public static final Integer[] queryGranularitysList=new Integer[]{1*60, 5*60, 30*60, 60*60, 24*3600, 7*24*3600, 30*24*3600, 3*30*24*3600, 365*24*3600};
   public static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy/M/d HH:mm");
-  private final long eventTime;
+  private final long eventTimeSec;
+  private final LocalDateTime time;
 
   String originalSQL;
   String intentBitVector;
@@ -91,12 +75,14 @@ public class APMFragmentIntent
   private String timeRangeBitMap;
   private String queryGranularityBitMap;
   private boolean[] queryGranularitys;
+  private String timeBitMap;
 
-  public APMFragmentIntent(String originalSQL, long eventTime,SchemaParser schParse, boolean includeSelOpConst, String dataset)
+  public APMFragmentIntent(String originalSQL, LocalDateTime time, long eventTimeSec, SchemaParser schParse, boolean includeSelOpConst, String dataset)
       throws Exception
   {
     this.originalSQL = originalSQL.toLowerCase();
-    this.eventTime = eventTime;
+    this.time=time;
+    this.eventTimeSec = eventTimeSec;
     this.schParse = schParse;
     this.includeSelOpConst = includeSelOpConst;
     this.dataset = dataset;
@@ -178,11 +164,13 @@ public class APMFragmentIntent
 
   public void printIntentVector() throws Exception
   {
-    System.out.println("Printing FragmentBitVector");
+    System.out.println("---------------------Printing FragmentBitVector----------------------");
+    System.out.println("clean query:"+this.originalSQL);
     System.out.println(this.intentBitVector);
     System.out.println("----OPERATOR-WISE FRAGMENT------");
 //    System.out.println("queryTypeBitMap: " + this.queryTypeBitMap);
-    System.out.println("1.TableBitMap: " + this.tableBitMap);
+    System.out.println("1.TimeBitMap: " + this.tableBitMap);
+    System.out.println("1(false).TableBitMap: " + this.tableBitMap);
     System.out.println("2.ProjectionBitMap(Select): " + this.projectionBitMap);
     System.out.println("3.AVGBitMap: " + this.AVGBitMap);
     System.out.println("3.MINBitMap: " + this.MINBitMap);
@@ -223,10 +211,10 @@ public class APMFragmentIntent
     this.SUMColumns = sqlParser.getSumColumns();
     //新增特征
     this.timeOffsetWhere = sqlParser.getTimeOffsetWhere();
-    if(this.timeOffsetWhere==null){
-      System.out.println("timeOffsetWhere is null!"+sqlParser.getQuery());
-      return;
-    }
+//    if(this.timeOffsetWhere==null){
+//      System.out.println("timeOffsetWhere is null!"+sqlParser.getQuery());
+//      return;
+//    }
     this.timeRangeWhere = sqlParser.getTimeRangeWhere();
     this.queryGranularitys = sqlParser.getQueryGranularitys();
 //    this.COUNTColumns = sqlParser.getCOUNTColumns();
@@ -238,7 +226,7 @@ public class APMFragmentIntent
 
   public void parseQuery() throws Exception
   {
-    sqlParser.createQueryVector(this.originalSQL,this.eventTime);
+    sqlParser.createQueryVector(this.originalSQL,this.eventTimeSec);
     populateOperatorObjects();
   }
 
@@ -703,7 +691,9 @@ public class APMFragmentIntent
   public void createFragmentVectors(boolean ignoreTable) throws Exception
   {
 //    createBitVectorForQueryTypes();//sql类型4位
-    if(ignoreTable){
+    //sql触发时间特征：小时，周提取
+    this.timeBitMap = createBitVectorForEventTime(this.time);
+    if(!ignoreTable){
       createBitVectorForTables();//sql中要查询的表，位数为表数量---from
     }
     this.projectionBitMap = createBitVectorForOpColSet(this.projectionColumns);//sql中要查询的列，位数为列数量---select
@@ -723,11 +713,31 @@ public class APMFragmentIntent
       createBitVectorForSelPredColRangeBins();
     }
     //where Time offset and range
-    this.timeOffsetBitMap = createBitVectorForTime(this.timeOffsetWhere);
-    this.timeRangeBitMap = createBitVectorForTime(this.timeRangeWhere);
+    this.timeOffsetBitMap = createBitVectorForWhereTime(this.timeOffsetWhere);
+    this.timeRangeBitMap = createBitVectorForWhereTime(this.timeRangeWhere);
     //query granularity
     this.queryGranularityBitMap = createBitVectorForQueryGranularity(this.queryGranularitys);
     this.intentBitVector = this.intentBitVecBuilder.toString();
+  }
+
+  private String createBitVectorForEventTime(LocalDateTime time) {
+    String vec="";
+    for (int i=0;i<7;i++){
+      int weekDay = time.getDayOfWeek().getValue();
+      if (weekDay==i+1){
+        vec+="1";
+      }else{
+        vec+="0";
+      }
+    }
+    for (int i=0;i<24;i++){
+      if (time.getHour()==i){
+        vec+="1";
+      }else
+        vec+="0";
+    }
+    this.appendToBitVectorString(vec);
+    return vec;
   }
 
   private String createBitVectorForQueryGranularity(boolean[] queryGranularitys) {
@@ -742,10 +752,10 @@ public class APMFragmentIntent
     return vec;
   }
 
-  private String createBitVectorForTime(Integer timeOffsetSecondWhere) {
+  private String createBitVectorForWhereTime(Integer timeOffsetSecondWhere) {
     String vec="";
     for (Integer granularity:queryGranularitysList){
-      if (timeOffsetSecondWhere/granularity>0){
+      if (timeOffsetSecondWhere==null||timeOffsetSecondWhere/granularity>0){
         vec+="1";
       }else{
         vec+="0";
@@ -763,9 +773,9 @@ public class APMFragmentIntent
         || this.queryType.equals("delete")) {
       try {
         this.parseQuery();
-        if(this.timeOffsetWhere==null){
-          return false;
-        }
+//        if(this.timeOffsetWhere==null){
+//          return false;
+//        }
         this.createFragmentVectors(ignoreTables);
       }
       catch (Exception e) {
@@ -1151,6 +1161,7 @@ public class APMFragmentIntent
 //		}
 //		String configFile = homeDir+"/var/data/MINC/InputOutput/MincJavaConfig.txt";
     String configFile = "input/ApmJavaConfig.txt";
+    String outputDir = "output/0320/single";
     SchemaParser schParse = new SchemaParser();
     schParse.fetchSchema(configFile);
     HashMap<String, String> configDict = schParse.getConfigDict();
@@ -1174,7 +1185,8 @@ public class APMFragmentIntent
           count++;
           String eventTimeStr=record.get("event_time");
           long eventTimeSec=getTimeMills(eventTimeStr)/1000;
-          String queryIntent = getQueryIntent(query, eventTimeSec,schParse, includeSelOpConst,false);
+          LocalDateTime eventTime = LocalDateTime.parse(eventTimeStr, DateTimeFormatter.ofPattern("yyyy/M/d H:mm"));
+          String queryIntent = getQueryIntent(query, eventTime,eventTimeSec,schParse, includeSelOpConst,false);
           log.info(count+",queryIntent.length="+queryIntent.length() + "," + queryIntent);
           sqlList.add("Session 0, Query " + count + "; OrigQuery:" + query + ";" + queryIntent);
         }
@@ -1185,7 +1197,7 @@ public class APMFragmentIntent
     catch (Exception e) {
       e.printStackTrace();
     }
-    Util.writeSQLListToFile(sqlList, "output","ApmQueryIntent.txt");
+    Util.writeSQLListToFile(sqlList, outputDir,"ApmSingleQueryIntent.txt");
   }
 
   public static long getTimeMills(String timeString){
@@ -1200,14 +1212,14 @@ public class APMFragmentIntent
     return timestamp;
   }
 
-  public static String getQueryIntent(String query,long eventTime, SchemaParser schParse, boolean includeSelOpConst,boolean ignoreTables)
+  public static String getQueryIntent(String query, LocalDateTime time, long eventTimeSec, SchemaParser schParse, boolean includeSelOpConst, boolean ignoreTables)
       throws Exception
   {
     query=StringCleaner.cleanString(query);
     query=StringCleaner.correctQuery(query);
-    System.out.println("clean query:"+query);
 
-    APMFragmentIntent fragmentObj = new APMFragmentIntent(query, eventTime,schParse, includeSelOpConst, "APM");
+
+    APMFragmentIntent fragmentObj = new APMFragmentIntent(query, time,eventTimeSec,schParse, includeSelOpConst, "APM");
     boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors(ignoreTables);
     if (validQuery) {
 //      if(!ignoreTables){
