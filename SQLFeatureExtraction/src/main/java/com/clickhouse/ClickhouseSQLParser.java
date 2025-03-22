@@ -149,29 +149,29 @@ public class ClickhouseSQLParser {
             extractedColumnExpr(expr1,selectionColumns);
         }else if(expr instanceof FunctionColumnExpr){
             FunctionColumnExpr colExpr = (FunctionColumnExpr)expr;
-            if(!"equals".equals(colExpr.getName().getName())){
+            if(!"equals".equalsIgnoreCase(colExpr.getName().getName())){
                 List<ColumnExpr> args = colExpr.getArgs();
                 if(args!=null) {
                     if(args.get(0) instanceof IdentifierColumnExpr){
                         IdentifierColumnExpr aggColExpr=(IdentifierColumnExpr)args.get(0);
-                        if("sum".equals(colExpr.getName().getName())){
+                        if("sum".equalsIgnoreCase(colExpr.getName().getName())){
                             sumColumns.add(aggColExpr.getIdentifier().getName());
-                        }else if("max".equals(colExpr.getName().getName())){
+                        }else if("max".equalsIgnoreCase(colExpr.getName().getName())){
                             maxColumns.add(aggColExpr.getIdentifier().getName());
-                        }else if("min".equals(colExpr.getName().getName())){
+                        }else if("min".equalsIgnoreCase(colExpr.getName().getName())){
                             minColumns.add(aggColExpr.getIdentifier().getName());
-                        }else if("avg".equals(colExpr.getName().getName())){
+                        }else if("avg".equalsIgnoreCase(colExpr.getName().getName())){
                             avgColumns.add(aggColExpr.getIdentifier().getName());
-                        }else if("ts".equals(aggColExpr.getIdentifier().getName())){
-                            if("greaterOrEquals".equals(colExpr.getName().getName())||"lessOrEquals".equals(colExpr.getName().getName())){
+                        }else if("ts".equalsIgnoreCase(aggColExpr.getIdentifier().getName())){
+                            if("greaterorequals".equalsIgnoreCase(colExpr.getName().getName())||"lessorequals".equalsIgnoreCase(colExpr.getName().getName())){
                                 if(args.get(1) instanceof FunctionColumnExpr){
                                     FunctionColumnExpr funcExpr = (FunctionColumnExpr)args.get(1);
-                                    if("todatetime64".equals(funcExpr.getName().getName())) {
+                                    if("todatetime64".equalsIgnoreCase(funcExpr.getName().getName())) {
                                         ColumnExpr columnExpr = funcExpr.getArgs().get(0);
                                         if (columnExpr instanceof LiteralColumnExpr) {
                                             LiteralColumnExpr literalColumnExpr = (LiteralColumnExpr) columnExpr;
                                             String startStr = literalColumnExpr.getLiteral().asStringWithoutQuote();
-                                            if("greaterOrEquals".equals(colExpr.getName().getName())){
+                                            if("greaterorequals".equalsIgnoreCase(colExpr.getName().getName())){
                                                 tsStartSecond=Long.parseLong(startStr.substring(0,10));
                                             }else{
                                                 tsEndSecond=Long.parseLong(startStr.substring(0,10));

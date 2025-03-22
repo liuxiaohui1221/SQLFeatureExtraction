@@ -24,6 +24,7 @@ public class APMFragmentIntent
 {
   public static final Integer[] queryGranularitysList=new Integer[]{1*60, 5*60, 30*60, 60*60, 24*3600, 7*24*3600, 30*24*3600, 3*30*24*3600, 365*24*3600};
   public static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy/M/d HH:mm");
+  public static volatile int queryIntentLen;
   private final long eventTimeSec;
   private final LocalDateTime time;
 
@@ -162,14 +163,17 @@ public class APMFragmentIntent
     bw.close();
   }
 
-  public void printIntentVector() throws Exception
+  public void printIntentVector(boolean flag) throws Exception
   {
+    if(flag==false){
+      return;
+    }
     System.out.println("---------------------Printing FragmentBitVector----------------------");
     System.out.println("clean query:"+this.originalSQL);
     System.out.println(this.intentBitVector);
     System.out.println("----OPERATOR-WISE FRAGMENT------");
 //    System.out.println("queryTypeBitMap: " + this.queryTypeBitMap);
-    System.out.println("1.TimeBitMap: " + this.tableBitMap);
+    System.out.println("1.TimeBitMap: " + this.timeBitMap);
     System.out.println("1(false).TableBitMap: " + this.tableBitMap);
     System.out.println("2.ProjectionBitMap(Select): " + this.projectionBitMap);
     System.out.println("3.AVGBitMap: " + this.AVGBitMap);
@@ -712,7 +716,7 @@ public class APMFragmentIntent
       createBitVectorForSelPredOps();
       createBitVectorForSelPredColRangeBins();
     }
-    //where Time offset and range
+    //where Time offset(eventTime-whereStartTime) and range
     this.timeOffsetBitMap = createBitVectorForWhereTime(this.timeOffsetWhere);
     this.timeRangeBitMap = createBitVectorForWhereTime(this.timeRangeWhere);
     //query granularity
@@ -720,8 +724,9 @@ public class APMFragmentIntent
     this.intentBitVector = this.intentBitVecBuilder.toString();
   }
 
-  private String createBitVectorForEventTime(LocalDateTime time) {
+  public static String getTimeEncodedString(LocalDateTime time) {
     String vec="";
+    //day of week 0-6
     for (int i=0;i<7;i++){
       int weekDay = time.getDayOfWeek().getValue();
       if (weekDay==i+1){
@@ -730,12 +735,18 @@ public class APMFragmentIntent
         vec+="0";
       }
     }
+    //hour 0-23
     for (int i=0;i<24;i++){
       if (time.getHour()==i){
         vec+="1";
       }else
         vec+="0";
     }
+    return vec;
+  }
+
+  public String createBitVectorForEventTime(LocalDateTime time) {
+    String vec=getTimeEncodedString(time);
     this.appendToBitVectorString(vec);
     return vec;
   }
@@ -1184,9 +1195,9 @@ public class APMFragmentIntent
           }
           count++;
           String eventTimeStr=record.get("event_time");
-          long eventTimeSec=getTimeMills(eventTimeStr)/1000;
+          long eventTimeSec=getTimeSec(eventTimeStr);
           LocalDateTime eventTime = LocalDateTime.parse(eventTimeStr, DateTimeFormatter.ofPattern("yyyy/M/d H:mm"));
-          String queryIntent = getQueryIntent(query, eventTime,eventTimeSec,schParse, includeSelOpConst,false);
+          String queryIntent = getQueryIntent(query, eventTime,eventTimeSec,schParse, includeSelOpConst,false,true);
           log.info(count+",queryIntent.length="+queryIntent.length() + "," + queryIntent);
           sqlList.add("Session 0, Query " + count + "; OrigQuery:" + query + ";" + queryIntent);
         }
@@ -1200,7 +1211,7 @@ public class APMFragmentIntent
     Util.writeSQLListToFile(sqlList, outputDir,"ApmSingleQueryIntent.txt");
   }
 
-  public static long getTimeMills(String timeString){
+  public static long getTimeSec(String timeString){
     long timestamp = 0;
     try {
       Date date = sdf.parse(timeString);
@@ -1209,10 +1220,10 @@ public class APMFragmentIntent
     } catch (java.text.ParseException e) {
       throw new RuntimeException(e);
     }
-    return timestamp;
+    return timestamp/1000;
   }
 
-  public static String getQueryIntent(String query, LocalDateTime time, long eventTimeSec, SchemaParser schParse, boolean includeSelOpConst, boolean ignoreTables)
+  public static String getQueryIntent(String query, LocalDateTime time, long eventTimeSec, SchemaParser schParse, boolean includeSelOpConst, boolean ignoreTables,boolean isPrint)
       throws Exception
   {
     query=StringCleaner.cleanString(query);
@@ -1222,10 +1233,8 @@ public class APMFragmentIntent
     APMFragmentIntent fragmentObj = new APMFragmentIntent(query, time,eventTimeSec,schParse, includeSelOpConst, "APM");
     boolean validQuery = fragmentObj.parseQueryAndCreateFragmentVectors(ignoreTables);
     if (validQuery) {
-//      if(!ignoreTables){
-        fragmentObj.printIntentVector();
+        fragmentObj.printIntentVector(isPrint);
         fragmentObj.writeIntentVectorToTempFile(query);
-//      }
     }else{
       System.out.println("Invalid query:"+query);
       return null;
@@ -1233,6 +1242,7 @@ public class APMFragmentIntent
     String queryIntent = fragmentObj.getIntentBitVector();
     int maxLen = queryIntent.length();
     System.out.println("MaxLen: " + maxLen);
+    queryIntentLen=maxLen;
     return queryIntent;
   }
 

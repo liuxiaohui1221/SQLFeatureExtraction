@@ -8,6 +8,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -38,16 +39,16 @@ public class APMWindowFragmentIntent {
 
     // 查询记录结构
     static class QueryRecord {
-        private final long eventTimeMills;
+        private final long eventTimeSec;
         LocalDateTime eventTime;
         long duration;
         String sql;
         String table;
         long cost;
 
-        public QueryRecord(LocalDateTime eventTime,long eventTimeMills, long duration, String sql, String table) {
+        public QueryRecord(LocalDateTime eventTime,long eventTimeSec, long duration, String sql, String table) {
             this.eventTime = eventTime;
-            this.eventTimeMills = eventTimeMills;
+            this.eventTimeSec = eventTimeSec;
             this.duration = duration;
             this.sql = sql;
             this.table = table;
@@ -60,6 +61,10 @@ public class APMWindowFragmentIntent {
 
         public String getTable() {
             return this.table;
+        }
+
+        public String getSql() {
+            return this.sql;
         }
     }
 
@@ -107,7 +112,7 @@ public class APMWindowFragmentIntent {
                 if (!DictAllTables.containsKey(table)) {
                     continue;
                 }
-                records.add(new QueryRecord(eventTime, APMFragmentIntent.getTimeMills(parts[1]), duration, sql, table));
+                records.add(new QueryRecord(eventTime, APMFragmentIntent.getTimeSec(parts[1]), duration, sql, table));
             }
         }
         return records;
@@ -162,9 +167,9 @@ public class APMWindowFragmentIntent {
         return table;
     }
 
-    private List<String> encodedWindowQueryRecords(List<QueryRecord> windowData,LocalDateTime windowStart,
+    private List<String> encodedWindowQueryRecords(List<QueryRecord> windowData, LocalDateTime windowStart,
                                                    LocalDateTime windowEnd, SchemaParser schParse, boolean includeSelOpConst,
-                                                   boolean isTableGroupSequence,String combineMethod) throws Exception {
+                                                   boolean isTableGroupSequence, String combineMethod, AtomicInteger usedEmptyWindows) throws Exception {
         //根据表分组成多个窗口
         Map<String,List<QueryRecord>> tableGroup = windowData.stream().collect(Collectors.groupingBy(QueryRecord::getTable));
         //合并等价子查询：计算合并后查询的总耗时+查询频率=cost
@@ -177,25 +182,56 @@ public class APMWindowFragmentIntent {
         List<String> windowSqlList= new ArrayList<>();
 
         if(isTableGroupSequence){
-            for (Map.Entry<String, List<QueryRecord>> entry : mergedQueryRecords.entrySet()) {
-                if(entry.getValue().isEmpty()){
-                    continue;
+            if(mergedQueryRecords.isEmpty()){
+                //非凌晨时段的窗口0-9点空窗口
+                if(windowStart.getHour()>9){
+                    for(Map.Entry<String, Integer> entry : candidateTopTables.entrySet()){
+                        QueryRecord emptyRecord = getEmptyWindowEncoded(windowStart, entry.getKey());
+                        String emptyWindowEncoded=processWindow(Arrays.asList(emptyRecord), windowStart, windowEnd, schParse, includeSelOpConst,combineMethod);
+                        if(emptyWindowEncoded!=null){
+                            usedEmptyWindows.incrementAndGet();
+                            int seqId = entry.getValue();
+                            windowSqlList.add("Session "+seqId+", Query " + windowStart.toEpochSecond(ZoneOffset.UTC) + "; OrigQuery:" + "-" + ";" + emptyWindowEncoded);
+                        }
+                    }
                 }
-                String table=entry.getKey();
-                List<QueryRecord> queryWindowOfSingleTable = entry.getValue();
-                String encoded=processWindow(queryWindowOfSingleTable, windowStart, windowEnd, schParse, includeSelOpConst,combineMethod);
-                if(encoded!=null){
-                    int seqId = candidateTopTables.get(table);
-                    windowSqlList.add("Session "+seqId+", Query " + windowStart.toEpochSecond(ZoneOffset.UTC) + "; OrigQuery:" + queryWindowOfSingleTable.get(0).sql + ";" + encoded);
+            }else{
+                for (Map.Entry<String, List<QueryRecord>> entry : mergedQueryRecords.entrySet()) {
+                    if(entry.getValue().isEmpty()){
+                        continue;
+                    }
+                    String table=entry.getKey();
+                    List<QueryRecord> queryWindowOfSingleTable = entry.getValue();
+                    String encoded=processWindow(queryWindowOfSingleTable, windowStart, windowEnd, schParse, includeSelOpConst,combineMethod);
+                    if(encoded!=null){
+                        int seqId = candidateTopTables.get(table);
+                        windowSqlList.add("Session "+seqId+", Query " + windowStart.toEpochSecond(ZoneOffset.UTC) + "; OrigQuery:" + concatSqls(queryWindowOfSingleTable) + ";" + encoded);
+                    }
                 }
             }
         }else{
             String encoded=processWindow(windowDataMerged, windowStart, windowEnd, schParse, includeSelOpConst,combineMethod);
             if(encoded!=null){
                 windowSqlList.add("Session 0, Query " + windowStart.toEpochSecond(ZoneOffset.UTC) + "; OrigQuery:" + windowDataMerged.get(0).sql + ";" + encoded);
+            }else{
+                //非凌晨时段的窗口0-9点空窗口
+                if(windowStart.getHour()>9){
+                    usedEmptyWindows.incrementAndGet();
+                    QueryRecord emptyRecord= getEmptyWindowEncoded(windowStart,"dwm_request");
+                    String emptyEncoded=processWindow(Arrays.asList(emptyRecord), windowStart, windowEnd, schParse, includeSelOpConst,combineMethod);
+                    windowSqlList.add("Session 0, Query " + windowStart.toEpochSecond(ZoneOffset.UTC) + "; OrigQuery:" + "-" + ";" + emptyEncoded);
+                }
             }
         }
         return windowSqlList;
+    }
+
+    private String concatSqls(List<QueryRecord> queryWindowOfSingleTable) {
+        return queryWindowOfSingleTable.stream().map(QueryRecord::getSql).collect(Collectors.joining(";"));
+    }
+
+    private QueryRecord getEmptyWindowEncoded(LocalDateTime time,String table) {
+        return new QueryRecord(time,time.toEpochSecond(ZoneOffset.UTC),0,"select count() from "+table,table);
     }
 
     // 处理固定时间窗口
@@ -210,24 +246,47 @@ public class APMWindowFragmentIntent {
         LocalDateTime windowStart = start;
         int totalWindows=0;
         int emptyWindows=0;
+        AtomicInteger usedEmptyWindows=new AtomicInteger(0);
+        List<String> windowMetric=new ArrayList<>();
         while (windowStart.isBefore(end)) {
             LocalDateTime windowEnd = windowStart.plus(windowSize);
             List<QueryRecord> windowData = getRecordsInWindow(records, windowStart, windowEnd);
-
-            List<String> querysEncoded = encodedWindowQueryRecords(windowData, windowStart, windowEnd, schParse, includeSelOpConst, isTableGroupSequence,combineMethod);
-//            String encoded=processWindow(windowData, windowStart, windowEnd,schParse, includeSelOpConst);
-//            if(encoded!=null){
-//                sqlList.add(encoded);
-//            }
+            if(windowStart.getHour()>=0 && windowStart.getHour()<=9){
+//                System.out.println("skip window:"+windowStart);
+                windowStart = windowEnd;
+                continue;
+            }
+            List<String> querysEncoded = encodedWindowQueryRecords(windowData, windowStart, windowEnd, schParse, includeSelOpConst, isTableGroupSequence,combineMethod,usedEmptyWindows);
             if(querysEncoded.isEmpty()){
                 //空窗口时段
                 emptyWindows++;
+                windowMetric.add(windowStart+","+windowEnd.toString()+",0");
+
+            }else{
+                //扩充数据：在有查询的窗口处滑动获得多个重叠窗口
+                sqlList.addAll(querysEncoded);
+                totalWindows+=querysEncoded.size();
+                long deltaTime= windowSize.getSeconds()/expasionFactor;
+                for(int i=1;i<expasionFactor;i++){
+                    LocalDateTime newWindowEnd=windowStart.plusSeconds(deltaTime*i);
+                    LocalDateTime newWindowStart=newWindowEnd.minus(windowSize);
+                    List<QueryRecord> newWindowData = getRecordsInWindow(records, newWindowStart, newWindowEnd);
+                    List<String> newQuerysEncoded = encodedWindowQueryRecords(newWindowData, newWindowStart, newWindowEnd, schParse, includeSelOpConst, isTableGroupSequence,combineMethod, usedEmptyWindows);
+                    if(newQuerysEncoded.isEmpty()){
+                        //空窗口时段
+                        continue;
+                    }
+                    sqlList.addAll(newQuerysEncoded);
+                    totalWindows+=newQuerysEncoded.size();
+                }
+                windowMetric.add(windowStart+","+windowEnd.toString()+",1");
             }
-            sqlList.addAll(querysEncoded);
             windowStart = windowEnd;
-            totalWindows++;
         }
-        System.out.println("Total windows: "+totalWindows+", empty windows: "+emptyWindows+", empty rate: "+(double)emptyWindows/totalWindows);
+        //windowMetric保存到文件中
+        IOUtil.writeToFile(windowMetric, "windowMetric.csv");
+
+        System.out.println("Total used windows: "+totalWindows+",used empty windows: "+usedEmptyWindows.get()+"skip emptyWindows:"+emptyWindows+", empty rate: "+(double)usedEmptyWindows.get()/(totalWindows));
         return sqlList;
     }
 
@@ -235,6 +294,7 @@ public class APMWindowFragmentIntent {
     private List<String> processPerQueryWindows(List<QueryRecord> records, SchemaParser schParse,
                                                 boolean includeSelOpConst, boolean isTableGroupSequence,String combineMethod) throws Exception {
         List<String> sqlList= new ArrayList<>();
+        AtomicInteger usedEmptyWindows=new AtomicInteger(0);
         Map<String, AtomicInteger> tableAndCount = new HashMap<>();
         if(isTableGroupSequence){
             for (String table : candidateTopTables.keySet()) {
@@ -251,17 +311,22 @@ public class APMWindowFragmentIntent {
             }
             beforeEnd=windowEnd;
             LocalDateTime windowStart = windowEnd.minus(windowSize);
+
+            if(windowStart.getHour()>=0 && windowStart.getHour()<=9){
+                continue;
+            }
             List<QueryRecord> windowData = getRecordsInWindow(records, windowStart, windowEnd);
 
-            List<String> querysEncoded = encodedWindowQueryRecords(windowData, windowStart, windowEnd, schParse, includeSelOpConst, isTableGroupSequence,combineMethod);
+            List<String> querysEncoded = encodedWindowQueryRecords(windowData, windowStart, windowEnd, schParse, includeSelOpConst, isTableGroupSequence,combineMethod, usedEmptyWindows);
             if(querysEncoded.isEmpty()){
                 //空窗口时段
                 emptyWindows++;
+                continue;
             }
             sqlList.addAll(querysEncoded);
             totalWindows++;
         }
-        System.out.println("Total windows: "+totalWindows+", empty windows: "+emptyWindows+", empty rate: "+(double)emptyWindows/totalWindows);
+        System.out.println("Total windows: "+totalWindows+", used empty windows: "+usedEmptyWindows.get()+", empty rate: "+(double)usedEmptyWindows.get()/(totalWindows));
 
         return sqlList;
     }
@@ -272,7 +337,7 @@ public class APMWindowFragmentIntent {
         Map<String, List<QueryRecord>> mergedQueryRecords = new HashMap<>();
         for (Map.Entry<String, List<QueryRecord>> entry : tableGroup.entrySet()) {
             for (QueryRecord record : entry.getValue()) {
-                String queryIntent = APMFragmentIntent.getQueryIntent(record.sql, record.eventTime,record.eventTimeMills, schParse, includeSelOpConst, true);
+                String queryIntent = APMFragmentIntent.getQueryIntent(record.sql, record.eventTime,record.eventTimeSec, schParse, includeSelOpConst, true,false);
                 if(queryIntent!=null){
                     if(intentAndOriginSql.containsKey(queryIntent)){
                         QueryRecord originRecord = intentAndOriginSql.get(queryIntent);
@@ -303,13 +368,6 @@ public class APMWindowFragmentIntent {
     private String processWindow(List<QueryRecord> windowTemplateQuerys,
                                  LocalDateTime start,
                                  LocalDateTime end, SchemaParser schParse, boolean includeSelOpConst,String combineMethod) throws Exception {
-//        HashMap<String, Integer> DictAllTables;
-//        if(isTableGroupSequence){
-//            DictAllTables = candidateTopTables;
-//        }else{
-//            DictAllTables = schParse.fetchMINCTables();
-//        }
-
         // Step 1: 按表统计总查询模板成本
         Map<String, Long> tableDurations = windowTemplateQuerys.stream()
 //                .filter(record->DictAllTables.containsKey(record.table))
@@ -347,11 +405,6 @@ public class APMWindowFragmentIntent {
         String encodedQuerysInWindow = oneHotEncodeForQuerys(selectedQueries, schParse, includeSelOpConst,windowTablesIntent,posTables,combineMethod);
         if(encodedQuerysInWindow==null){
             //默认这个窗口内没有对应表的查询
-//            StringBuilder emptyEncoded=new StringBuilder();
-//            for(int i=0;i<encoded_length;i++){
-//                emptyEncoded.append("0");
-//            }
-//            return emptyEncoded.toString();
             return null;
         }
         encoded_length=encodedQuerysInWindow.length();
@@ -381,7 +434,7 @@ public class APMWindowFragmentIntent {
         encoded.append(windowTablesIntent);
         int queryIntentLen = 0;
         for (QueryRecord queryRecord : queries) {
-            String queryIntent = APMFragmentIntent.getQueryIntent(queryRecord.sql, queryRecord.eventTime, queryRecord.eventTimeMills, schParse, includeSelOpConst, true);
+            String queryIntent = APMFragmentIntent.getQueryIntent(queryRecord.sql, queryRecord.eventTime, queryRecord.eventTimeSec, schParse, includeSelOpConst, true,false);
             if (queryIntent == null) continue;
             queryIntentLen = queryIntent.length();
             //拼接方式合并sql编码
@@ -429,6 +482,7 @@ public class APMWindowFragmentIntent {
     public static final String COMBINE_METHOD_MERGE="merge";
     public static final int topTabN = 1;//1-candidateTopTables
     public static final int topQueryN = 2;
+    public static final int expasionFactor=5;
     // 使用示例
     public static void main(String[] args) throws Exception {
         String configFile = "input/ApmJavaConfig.txt";
@@ -437,12 +491,13 @@ public class APMWindowFragmentIntent {
         Duration window_size = Duration.ofMinutes(5);
         boolean isTableGroupSequence = true;//是否按表分组序列
         candidateTopTables.put("dwm_request",0);
-        candidateTopTables.put("dwm_exception",1);
-        candidateTopTables.put("dwm_user",2);
+//        candidateTopTables.put("dwm_exception",1);
+//        candidateTopTables.put("dwm_user",2);
 
 
         String combineMethod = COMBINE_METHOD_MERGE;//concat or merge
-        String outputDir="output/0320";
+
+        String outputDir="output/"+ LocalDate.now();
         String outputFile = "window_querys_"+isTableGroupSequence+"_"+window_size.getSeconds()+"_"+topTabN+topQueryN+".txt"; // 输出文件路径
         SchemaParser schParse = new SchemaParser();
         schParse.fetchSchema(configFile);
@@ -454,7 +509,7 @@ public class APMWindowFragmentIntent {
                 window_size,  // 窗口大小
                 topTabN,                      // TopK表
                 topQueryN,                      // 每个表的TopN查询
-                SlideMode.FIXED         // 滑动模式 FIXED or SLIDING
+                SlideMode.SLIDING         // 滑动模式 FIXED or SLIDING
         );
         long startT = System.currentTimeMillis();
         List<String> sqlList = analyzer.process(Path.of(tsvFilePath),schParse,includeSelOpConst,isTableGroupSequence,combineMethod);
