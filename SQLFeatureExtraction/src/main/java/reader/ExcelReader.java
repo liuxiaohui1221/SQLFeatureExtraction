@@ -13,6 +13,7 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -25,9 +26,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ExcelReader
 {
   private static final AtomicInteger tableIndex = new AtomicInteger(0);
-  private static final String tsvFilePath = "C:/buaa/data/APM/clickhouse_sql_1.tsv"; // TSV 文件路径
-  private static final String outputFileName = "0318_ApmQuerys.tsv";
-  private static final String outputDirector = "output/0318";
+  private static final String tsvFilePath = "/home/xhh/data/APM/clickhouse_sql_1.tsv"; // TSV 文件路径
+  private static final String outputFileName = "ApmQuerys.tsv";
+  private static String outputDirector = "output/";
 
   public static void main(String[] args) throws FileNotFoundException {
     Map<String, Set<String>> tablesMap = new HashMap<>();
@@ -36,9 +37,9 @@ public class ExcelReader
     List<String> cleanQuerys = new ArrayList<>();
 
 
-    BufferedReader reader = new BufferedReader(new InputStreamReader(
-            new FileInputStream(tsvFilePath), StandardCharsets.UTF_8));
-    try /*(Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath)))*/ {
+//    BufferedReader reader = new BufferedReader(new InputStreamReader(
+//            new FileInputStream(tsvFilePath), StandardCharsets.UTF_8));
+    try (Reader reader = Files.newBufferedReader(Paths.get(tsvFilePath))) {
       CSVParser csvParser = new CSVParser(reader, CSVFormat.TDF.withFirstRecordAsHeader());
       Iterable<CSVRecord> records = csvParser.getRecords();
 
@@ -210,6 +211,12 @@ public class ExcelReader
   public static File getOutputDir()
   {
     String projectPath = System.getProperty("user.dir"); // 获取当前工作目录，通常是项目根目录
+    String curent_day = LocalDate.now().toString();
+    if (outputDirector.lastIndexOf("/") == -1) {
+      outputDirector = outputDirector + "/" + curent_day;
+    } else {
+      outputDirector = outputDirector + curent_day;
+    }
     File outputDir = new File(projectPath, outputDirector);
 
     // 确保 output 目录存在
