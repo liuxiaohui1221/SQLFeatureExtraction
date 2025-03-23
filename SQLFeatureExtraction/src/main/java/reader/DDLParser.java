@@ -51,6 +51,9 @@ public class DDLParser
       if(tableName.endsWith("_view")){
         tableName = tableName.substring(0,tableName.length()-5);
       }
+      if (tableName.equals("120")) {
+        return;
+      }
       if (columnsMatcher.find()) {
         String columnsStr = columnsMatcher.group(0);
 //        System.out.println("columnsStr:" + columnsStr);
