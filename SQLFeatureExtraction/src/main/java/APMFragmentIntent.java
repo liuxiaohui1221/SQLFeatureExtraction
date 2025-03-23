@@ -15,6 +15,7 @@ import java.net.InetAddress;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -173,29 +174,48 @@ public class APMFragmentIntent
     System.out.println(this.intentBitVector);
     System.out.println("----OPERATOR-WISE FRAGMENT------");
 //    System.out.println("queryTypeBitMap: " + this.queryTypeBitMap);
-    System.out.println("1.TimeBitMap: " + this.timeBitMap);
-    System.out.println("1(false).TableBitMap: " + this.tableBitMap);
-    System.out.println("2.ProjectionBitMap(Select): " + this.projectionBitMap);
-    System.out.println("3.AVGBitMap: " + this.AVGBitMap);
-    System.out.println("3.MINBitMap: " + this.MINBitMap);
-    System.out.println("3.MAXBitMap: " + this.MAXBitMap);
-    System.out.println("3.SUMBitMap: " + this.SUMBitMap);
+    System.out.println("1.TimeBitMap: " + this.timeBitMap.length() + "," + this.timeBitMap);
+    System.out.println("1(false).TableBitMap: " + this.tableBitMap.length() + "," + this.tableBitMap);
+    System.out.println("2.ProjectionBitMap(Select): " + this.projectionBitMap.length() + "," + this.projectionBitMap);
+    System.out.println("3.AVGBitMap: " + this.AVGBitMap.length() + "," + this.AVGBitMap);
+    System.out.println("3.MINBitMap: " + this.MINBitMap.length() + "," + this.MINBitMap);
+    System.out.println("3.MAXBitMap: " + this.MAXBitMap.length() + "," + this.MAXBitMap);
+    System.out.println("3.SUMBitMap: " + this.SUMBitMap.length() + "," + this.SUMBitMap);
 
-    System.out.println("4.SelectionBitMap(Where):" + this.whereBitMap);
-    System.out.println("5.GroupByBitMap: " + this.groupByBitMap);
-    System.out.println("6.OrderByBitMap: " + this.orderByBitMap);
-    System.out.println("7.HavingBitMap: " + this.havingBitMap);
+    System.out.println("4.SelectionBitMap(Where):" + this.whereBitMap.length() + "," + this.whereBitMap);
+    System.out.println("5.GroupByBitMap: " + this.groupByBitMap.length() + "," + this.groupByBitMap);
+    System.out.println("6.OrderByBitMap: " + this.orderByBitMap.length() + "," + this.orderByBitMap);
+//    System.out.println("7.HavingBitMap: " + this.SUMBitMap.length() + "," + this.havingBitMap);
 //    System.out.println("JoinPredicatesBitMap: " + this.joinPredicatesBitMap);
-    System.out.println("8.LimitBitMap: " + this.limitBitMap);
+//    System.out.println("8.LimitBitMap: " + this.SUMBitMap.length() + "," + this.limitBitMap);
 //    System.out.println("COUNTBitMap: " + this.COUNTBitMap);
     if (this.includeSelOpConst) {
-      System.out.println("selPredOpBitMap:" + this.selPredOpBitMap);
-      System.out.println("selPredColRangeBinBitMap:" + this.selPredColRangeBinBitMap);
+      System.out.println("selPredOpBitMap:" + this.selPredOpBitMap.length() + "," + this.selPredOpBitMap);
+      System.out.println("selPredColRangeBinBitMap:"
+                         + this.selPredColRangeBinBitMap.length()
+                         + ","
+                         + this.selPredColRangeBinBitMap);
     }
-    System.out.println("9or10.TimeOffsetGranBit:"+this.timeOffsetBitMap);
-    System.out.println("11.TimeRangeGranBit:"+this.timeRangeBitMap);
-    System.out.println("12.QueryGranularity:"+this.queryGranularityBitMap);
-    System.out.println("----OPERATOR-WISE FRAGMENT OVER!------");
+    System.out.println("9or10.TimeOffsetGranBit:" + this.timeOffsetBitMap.length() + "," + this.timeOffsetBitMap);
+    System.out.println("11.TimeRangeGranBit:" + this.timeRangeBitMap.length() + "," + this.timeRangeBitMap);
+    System.out.println("12.QueryGranularity:"
+                       + this.queryGranularityBitMap.length()
+                       + ","
+                       + this.queryGranularityBitMap);
+    log.info("Query intent lenth:" + (this.timeBitMap.length()
+                                      + this.tableBitMap.length()
+                                      + this.projectionBitMap.length()
+                                      + this.AVGBitMap.length()
+                                      + this.MINBitMap.length()
+                                      + this.MAXBitMap.length()
+                                      + this.SUMBitMap.length()
+                                      + this.whereBitMap.length()
+                                      + this.groupByBitMap.length()
+                                      + this.orderByBitMap.length()
+                                      + this.timeOffsetBitMap.length()
+                                      + this.timeRangeBitMap.length()
+                                      + this.queryGranularityBitMap.length()));
+    System.out.println("----OVER!------");
   }
 
   public void populateOperatorObjects() throws Exception
@@ -1172,7 +1192,7 @@ public class APMFragmentIntent
 //		}
 //		String configFile = homeDir+"/var/data/MINC/InputOutput/MincJavaConfig.txt";
     String configFile = "input/ApmJavaConfig.txt";
-    String outputDir = "output/0320/single";
+    String outputDir = "output/" + LocalDate.now() + "/single";
     SchemaParser schParse = new SchemaParser();
     schParse.fetchSchema(configFile);
     HashMap<String, String> configDict = schParse.getConfigDict();
