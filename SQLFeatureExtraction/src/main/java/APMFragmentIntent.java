@@ -196,7 +196,10 @@ public class APMFragmentIntent
                          + ","
                          + this.selPredColRangeBinBitMap);
     }
-    System.out.println("9or10.TimeOffsetGranBit:" + this.timeOffsetBitMap.length() + "," + this.timeOffsetBitMap);
+    System.out.println("9or10.TimeOffsetGranBit(eventTimeSec-wheretsEndSec):"
+                       + this.timeOffsetBitMap.length()
+                       + ","
+                       + this.timeOffsetBitMap);
     System.out.println("11.TimeRangeGranBit:" + this.timeRangeBitMap.length() + "," + this.timeRangeBitMap);
     System.out.println("12.QueryGranularity:"
                        + this.queryGranularityBitMap.length()
@@ -1192,7 +1195,7 @@ public class APMFragmentIntent
 //		}
 //		String configFile = homeDir+"/var/data/MINC/InputOutput/MincJavaConfig.txt";
     String configFile = "input/ApmJavaConfig.txt";
-    String outputDir = "output/" + LocalDate.now() + "/single";
+    String outputDir = "single";
     SchemaParser schParse = new SchemaParser();
     schParse.fetchSchema(configFile);
     HashMap<String, String> configDict = schParse.getConfigDict();

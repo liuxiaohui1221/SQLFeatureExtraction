@@ -1,5 +1,6 @@
 package reader;
 
+import com.google.common.collect.Maps;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
@@ -28,13 +29,17 @@ public class ExcelReader
   private static final AtomicInteger tableIndex = new AtomicInteger(0);
   private static final String tsvFilePath = "input/clickhouse_sql_1.tsv"; // TSV 文件路径
   private static final String outputFileName = "ApmQuerys.tsv";
-  private static String outputDirector = "output/";
+  private static String outputDirector = "output/1/";
+  public static final HashMap<String, Integer> candidateTopTables = Maps.newHashMap();
 
   public static void main(String[] args) throws FileNotFoundException {
     Map<String, Set<String>> tablesMap = new HashMap<>();
     Map<String, List<String>> tableColsMap = new HashMap<>();
     Map<String, List<String>> tableColTypesMap = new HashMap<>();
     List<String> cleanQuerys = new ArrayList<>();
+    candidateTopTables.put("dwm_request", 0);
+//    candidateTopTables.put("dwm_exception", 1);
+//    candidateTopTables.put("dwm_user", 2);
 
 
     BufferedReader reader = new BufferedReader(new InputStreamReader(
@@ -77,6 +82,7 @@ public class ExcelReader
         }
       }
 
+      //过滤输出所需要的表信息
       // 将结果写入文件
       writeDBTablesToFile(tablesMap);
       DDLParser.writeMapsToFile(tableColsMap, tableColTypesMap);
@@ -92,7 +98,9 @@ public class ExcelReader
       List<String> tableAndCols = new ArrayList<>();
       tableColsMap.forEach((tableName, cols) -> {
         System.out.println(tableName + ": " + cols.size());
-        cols.stream().forEach(col -> {
+        cols.stream()
+            .filter(c -> candidateTopTables.isEmpty() || candidateTopTables.containsKey(tableName))
+            .forEach(col -> {
           tableAndCols.add(tableName + "." + col);
         });
       });
@@ -195,7 +203,9 @@ public class ExcelReader
       try (FileWriter writer = new FileWriter(outputFile)) {
         tableNames.forEach(tableName -> {
           try {
-            writer.write(tableName + ":" + tableIndex.getAndIncrement() + "\n");
+            if (candidateTopTables.isEmpty() || candidateTopTables.containsKey(tableName)) {
+              writer.write(tableName + ":" + tableIndex.getAndIncrement() + "\n");
+            }
           }
           catch (IOException e) {
             e.printStackTrace();

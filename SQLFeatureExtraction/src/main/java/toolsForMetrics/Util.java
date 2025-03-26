@@ -40,6 +40,8 @@ import net.sf.jsqlparser.statement.create.table.CreateTable;
 import net.sf.jsqlparser.statement.select.SelectItem;
 import net.sf.jsqlparser.statement.select.SubSelect;
 
+import static reader.ExcelReader.getOutputDir;
+
 /**
  * This is a service module for query similarity metrics
  * @author Gokhan
@@ -383,13 +385,16 @@ import net.sf.jsqlparser.expression.TimeValue;
 	 */
 	public static void writeSQLListToFile(List<String> sqlList, String outputdir,String filePath)
 	{
-		File outputDir = new File(outputdir);
+		File outputDir = new File(getOutputDir(), outputdir);
 		// 确保 output 目录存在
 		if (!outputDir.exists() && !outputDir.mkdirs()) {
 			throw new IllegalStateException("Cannot create output directory.");
 		}
 		System.out.println("write to outputdir:"+outputdir+"/"+filePath);
-		try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputdir+"/"+filePath))) {
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(new File(
+				getOutputDir(),
+				outputdir + "/" + filePath
+		)))) {
 			for (String sql : sqlList) {
 				writer.write(sql);
 				writer.newLine(); // 写入换行符，以便每条SQL语句在新的一行

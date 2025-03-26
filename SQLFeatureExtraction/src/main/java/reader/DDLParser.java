@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static reader.ExcelReader.candidateTopTables;
+
 public class DDLParser
 {
 
@@ -106,9 +108,11 @@ public class DDLParser
 //    分别遍历两个map，将数据写入到两个文件中
     try (FileWriter writer = new FileWriter(colsOutputFile)) {
       for (Map.Entry<String, List<String>> entry : tableColsMap.entrySet()) {
-        String line = entry.getKey() + ": [" + String.join(", ", entry.getValue()) + "]\n";
+        if (candidateTopTables.isEmpty() || candidateTopTables.containsKey(entry.getKey())) {
+          String line = entry.getKey() + ": [" + String.join(", ", entry.getValue()) + "]\n";
 //      System.out.println("line:" + line);
-        writer.write(line);
+          writer.write(line);
+        }
       }
     }
     catch (IOException e) {

@@ -1,5 +1,6 @@
 import com.clickhouse.SchemaParser;
 import com.google.common.collect.Maps;
+import lombok.extern.slf4j.Slf4j;
 import tools.IOUtil;
 import toolsForMetrics.Util;
 
@@ -13,9 +14,11 @@ import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class APMWindowFragmentIntent {
 
     private final int seed=999;
@@ -227,7 +230,7 @@ public class APMWindowFragmentIntent {
     }
 
     private String concatSqls(List<QueryRecord> queryWindowOfSingleTable) {
-        return queryWindowOfSingleTable.stream().map(QueryRecord::getSql).collect(Collectors.joining(";"));
+        return queryWindowOfSingleTable.stream().map(QueryRecord::getSql).collect(Collectors.joining("->"));
     }
 
     private QueryRecord getEmptyWindowEncoded(LocalDateTime time,String table) {
@@ -397,7 +400,7 @@ public class APMWindowFragmentIntent {
             selectedQueries.addAll(tableQueries);
         }
 
-        // 或有窗口内所有tables和对应编码位置，并按table编码位置对对应的query编码进行存放
+        // 窗口内所有tables和对应编码位置，并按table编码位置对对应的query编码进行存放
         HashMap<Integer,String> posTables=new HashMap<>();
         String windowTablesIntent=createBitVectorForTables(schParse,topTables, posTables);
 
@@ -411,7 +414,7 @@ public class APMWindowFragmentIntent {
         // 输出结果
         System.out.printf("Window: %s - %s%n", start, end);
         System.out.println("Top Tables: " + topTables);
-        System.out.println("Encoded Queries:"+encodedQuerysInWindow.length());
+        System.out.println("Encoded Windows queries length:" + encodedQuerysInWindow.length());
         System.out.println(encodedQuerysInWindow);
         System.out.println("-----------------------");
         return encodedQuerysInWindow;
@@ -437,10 +440,12 @@ public class APMWindowFragmentIntent {
             String queryIntent = APMFragmentIntent.getQueryIntent(queryRecord.sql, queryRecord.eventTime, queryRecord.eventTimeSec, schParse, includeSelOpConst, true,false);
             if (queryIntent == null) continue;
             queryIntentLen = queryIntent.length();
-            //拼接方式合并sql编码
-            if(combineMethod.equals(COMBINE_METHOD_CONCAT)){
-                //todo
-            }else if(combineMethod.equals(COMBINE_METHOD_MERGE)){
+            log.info("queryIntent len:{}", queryIntent.length());
+            if (combineMethod.equals(COMBINE_METHOD_MERGE)) {
+                //todo 合并sql编码
+                log.error("combineMethod merge not implemented yet!!!");
+            } else if (combineMethod.equals(COMBINE_METHOD_CONCAT)) {
+                //拼接方式合并sql编码
                 String mergedQueryIntents=queryIntent;
                 if(tableAndQueryIntents.containsKey(queryRecord.table)){
                     String oldQueryIntent = tableAndQueryIntents.get(queryRecord.table);
@@ -455,7 +460,7 @@ public class APMWindowFragmentIntent {
         if(tableAndQueryIntents.isEmpty()){
             return null;
         }
-
+        log.info("windowTablesIntent len:{}", windowTablesIntent.length());
         for (int i = 0; i < windowTablesIntent.length(); i++) {
             char c = windowTablesIntent.charAt(i);
             if (c == '1') {
@@ -474,6 +479,11 @@ public class APMWindowFragmentIntent {
                 }
             }
         }
+        log.info("windowTablesIntent[{}]+windowTablesIntent[{}]*topQueryN[{}]*queryIntent[{}]={} = encoded len:{}",
+                 windowTablesIntent.length(), windowTablesIntent.length(), topQueryN, queryIntentLen,
+                 windowTablesIntent.length() + windowTablesIntent.length() * topQueryN * queryIntentLen,
+                 encoded.length()
+        );
         return encoded.toString();
     }
 
@@ -485,23 +495,35 @@ public class APMWindowFragmentIntent {
     public static final int expasionFactor=5;
     // 使用示例
     public static void main(String[] args) throws Exception {
-        String configFile = "input/ApmJavaConfig.txt";
+        String configFile = "input/table/" + topTabN + "/ApmJavaConfig.txt";
 //        String tsvFilePath = "input/testQuerys.tsv"; // TSV 文件路径
         String tsvFilePath = "input/0318_ApmQuerys.tsv";
+        String outputDir = "table";
         Duration window_size = Duration.ofMinutes(5);
         boolean isTableGroupSequence = true;//是否按表分组序列
-        candidateTopTables.put("dwm_request",0);
-//        candidateTopTables.put("dwm_exception",1);
-//        candidateTopTables.put("dwm_user",2);
+        if (topTabN == 1) {
+            candidateTopTables.put("dwm_request", 0);
+        } else if (topTabN == 3) {
+            candidateTopTables.put("dwm_request", 0);
+            candidateTopTables.put("dwm_exception", 1);
+            candidateTopTables.put("dwm_user", 2);
+        }
 
 
-        String combineMethod = COMBINE_METHOD_MERGE;//concat or merge
+        String combineMethod = COMBINE_METHOD_CONCAT;//concat or merge
 
-        String outputDir="output/"+ LocalDate.now();
-        String outputFile = "window_querys_"+isTableGroupSequence+"_"+window_size.getSeconds()+"_"+topTabN+topQueryN+".txt"; // 输出文件路径
+
+        String outputFile =
+            "window_querys_"
+            + window_size.getSeconds()
+            + "s_"
+            + topTabN
+            + "tab_"
+            + topQueryN
+            + "q.txt"; // 输出文件路径
         SchemaParser schParse = new SchemaParser();
         schParse.fetchSchema(configFile);
-        IOUtil.writeFile(candidateTopTables, outputDir,"ApmTables.txt");
+        IOUtil.writeFile(candidateTopTables, outputDir, "ApmWindowTables.txt");
         HashMap<String, String> configDict = schParse.getConfigDict();
         boolean includeSelOpConst = Boolean.parseBoolean(configDict.get("MINC_SEL_OP_CONST"));
 
@@ -513,7 +535,75 @@ public class APMWindowFragmentIntent {
         );
         long startT = System.currentTimeMillis();
         List<String> sqlList = analyzer.process(Path.of(tsvFilePath),schParse,includeSelOpConst,isTableGroupSequence,combineMethod);
-        System.out.println("Saved size:"+sqlList.size()+",cost:"+(System.currentTimeMillis()-startT)/1000+"s");
-        Util.writeSQLListToFile(sqlList, outputDir,outputFile);
+        System.out.println("sqlList size:"
+                           + sqlList.size()
+                           + ",cost:"
+                           + (System.currentTimeMillis() - startT) / 1000
+                           + "s");
+
+        //按固定窗口重新组织查询session
+        List<String> newsqlList = reorganizeSqlList(sqlList, window_size.getSeconds());
+        Util.writeSQLListToFile(newsqlList, outputDir, outputFile);
+        System.out.println("Saved new sqlList size:" + newsqlList.size());
+
+    }
+
+    public static List<String> reorganizeSqlList(List<String> sqlList, long winSeconds)
+    {
+//        "Session 0, Query " + windowStart.toEpochSecond(ZoneOffset.UTC) + "; OrigQuery:"
+
+        ArrayList<String> windowTablesIntent = new ArrayList<>(sqlList);
+
+        List<String> newSqlList = new ArrayList<>();
+        HashMap<Integer, List<String>> sessSqls = Maps.newHashMap();
+        for (int i = 0; i < windowTablesIntent.size(); i++) {
+            List<String> curSeesionSqls = new ArrayList<>();
+            sessSqls.put(i, curSeesionSqls);
+
+            //add cursql
+            //new sessId,queryId
+            String sessId = "Session " + i;
+            String queryId = ", Query " + curSeesionSqls.size();
+            String truncateSqlElement = windowTablesIntent.get(i).split("; OrigQuery:")[1];
+            curSeesionSqls.add(sessId + queryId + "; OrigQuery:" + truncateSqlElement);
+
+            long firstWindowStartEventTime = Long.parseLong(windowTablesIntent.get(i)
+                                                                              .split(";")[0].split("Query")[1].trim());
+            long firstWindowEndEventTime = firstWindowStartEventTime + winSeconds;
+            int endIndex = findFirstEndIndex(windowTablesIntent, firstWindowEndEventTime);
+
+            //add nextsql
+            long nextWindowEndEventTime = firstWindowEndEventTime;
+            while (endIndex > -1) {
+                //add nextsql
+                queryId = ", Query " + curSeesionSqls.size();
+                truncateSqlElement = windowTablesIntent.get(endIndex).split("; OrigQuery:")[1];
+                curSeesionSqls.add(sessId + queryId + "; OrigQuery:" + truncateSqlElement);
+
+//                nextWindowEndEventTime += winSeconds;
+                nextWindowEndEventTime = Math.max(
+                    nextWindowEndEventTime + winSeconds,
+                    Long.parseLong(windowTablesIntent.get(endIndex).split(";")[0].split("Query")[1].trim())
+                );
+                endIndex = findFirstEndIndex(windowTablesIntent, nextWindowEndEventTime);
+            }
+        }
+        //sessSqls中values存放到newSqlList中
+        for (List<String> sessSql : sessSqls.values()) {
+            newSqlList.addAll(sessSql);
+        }
+        log.info("Total sessions:{},new sqlList:{}", sessSqls.size(), newSqlList.size());
+        return newSqlList;
+    }
+
+    private static int findFirstEndIndex(List<String> sqlList, long firstWindowEndEventTime)
+    {
+        for (int i = 0; i < sqlList.size(); i++) {
+            long eventTime = Long.parseLong(sqlList.get(i).split(";")[0].split("Query")[1].trim());
+            if (eventTime > firstWindowEndEventTime) {
+                return i;
+            }
+        }
+        return -1;
     }
 }

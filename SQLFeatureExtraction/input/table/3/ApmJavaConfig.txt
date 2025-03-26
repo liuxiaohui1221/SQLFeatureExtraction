@@ -1,0 +1,13 @@
+MINC_TABLES=input/table/3/ApmTables.txt
+MINC_COLS=input/table/3/ApmColumns.txt
+MINC_COL_TYPES=input/table/3/ApmColTypes.txt
+MINC_COL_BIT_POS=input/table/3/ApmColBitPos.txt
+MINC_CONC_SESS_FILE=input/table/3/MincConcurrentSessions
+MINC_RAW_SESS_FILE=input/table/3/BusTrackerQueryLog
+MINC_TEMP_LOG_DIR=input/table/3/TempOutput
+MINC_FRAGMENT_INTENT_VECTOR_FILE=input/table/3/MincBitFragmentIntentSessions
+MINC_NUM_THREADS=100
+MINC_START_LINE_NUM=0
+MINC_KEEP_PRUNE_MODIFY_REPEATED_QUERIES=PREPROCESS
+MINC_SEL_OP_CONST=false
+MINC_DATASET=Apm
