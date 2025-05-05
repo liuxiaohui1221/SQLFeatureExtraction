@@ -1,12 +1,11 @@
+import sql.encoder.APMWindowFragmentIntent;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Random;
 
 public class APMWindowFragmentIntentTest
 {
@@ -17,8 +16,7 @@ public class APMWindowFragmentIntentTest
     // read from file
     List<String> sqlList1 = reorganizeSqlList(Path.of(
         "/home/xhh/db_workspace/SQLFeatureExtraction/SQLFeatureExtraction/src/test/java/com/clickhouse/queryintent_test.txt"));
-    List<String> strings = APMWindowFragmentIntent.reorganizeSqlList(sqlList1, 300);
-    System.out.println(strings.size());
+    APMWindowFragmentIntent.reorganizeSqlList(sqlList1, 300, "train");
   }
 
   private static List<String> reorganizeSqlList(Path file) throws IOException

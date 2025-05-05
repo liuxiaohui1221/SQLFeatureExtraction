@@ -13,9 +13,10 @@ Pre-created SQL fragment vectors for the BusTracker dataset are available at Bus
 This github repo has been initially cloned from https://github.com/UBOdin/EttuBench. On the top of their JSQLParser implementation, we have built our SQL fragment embedding vector creator
 
 Our code for SQL fragment extraction includes:
-* SQLFeatureExtraction/src/main/java/MINCFragmentIntent.java
+
+* SQLFeatureExtraction/src/main/java/encoder.MINCFragmentIntent.java
 * SQLFeatureExtraction/src/main/java/IntentCreator.java
-* SQLFeatureExtraction/src/main/java/SQLParser.java
+* SQLFeatureExtraction/src/main/java/encoder.SQLParser.java
 * SQLFeatureExtraction/src/main/java/com.clickhouse.SchemaParser.java
 
 The remaining code from https://github.com/UBOdin/EttuBench serves as utility code for our SQL Fragment extraction.

@@ -114,7 +114,7 @@
                     </execution>
                 </executions>
                 <configuration>
-					<mainClass>MINCFragmentIntent</mainClass>			
+									<mainClass>sql.encoder.MINCFragmentIntent</mainClass>
                 </configuration>
             </plugin>
 			<plugin>
@@ -176,7 +176,7 @@
                             </descriptorRefs>
                             <archive>
                                 <manifest>
-                                    <mainClass>MINCFragmentIntent</mainClass>
+                                    <mainClass>encoder.MINCFragmentIntent</mainClass>
                                 </manifest>
                             </archive>
                         </configuration>
