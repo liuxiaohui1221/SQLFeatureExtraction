@@ -13,6 +13,7 @@ import java.util.concurrent.*;
 
 import static sql.reader.ExcelReader.candidateTopTables;
 import static sql.tools.IOUtil.loadAndParse;
+import static sql.tools.SQLConverter.convertClickhouseToDruid;
 
 public class DruidQueryScheduler
 {
@@ -149,9 +150,10 @@ public class DruidQueryScheduler
             LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME),
             currentEvent.sql
         );
-
+        String druidSQL=convertClickhouseToDruid(currentEvent.sql);
+        System.out.println("Druid SQL: " + druidSQL);
         // 发送Druid查询
-        sendToDruid(currentEvent.sql);
+        sendToDruid(druidSQL);
 
         // 调度下一个任务
         if (currentIndex < events.size() - 1) {
