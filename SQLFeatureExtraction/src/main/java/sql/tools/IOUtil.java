@@ -1,9 +1,12 @@
 package sql.tools;
 
 import sql.pojo.QueryRecord;
+import sql.pojo.QueryWindowRecord;
+import sql.sender.DruidQueryJDBCExecutor;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -13,6 +16,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -80,6 +85,7 @@ public class IOUtil
         if (!dictAllTables.containsKey(table)) {
           continue;
         }
+        sql = sql.replace(table + "_cluster", table);
         records.add(new QueryRecord(
             eventTime,
             getTimeSec(parts[1]),
@@ -89,6 +95,7 @@ public class IOUtil
         ));
       }
     }
+    records.sort(Comparator.comparing(r -> r.getEventTime()));
     return records;
   }
 
@@ -165,5 +172,36 @@ public class IOUtil
     catch (IOException e) {
       e.printStackTrace();
     }
+  }
+
+  public static List<QueryWindowRecord> loadTest(Path file, HashMap<String, Integer> candidateTopTables)
+  {
+    List<QueryWindowRecord> records = new ArrayList<>();
+    try (BufferedReader br = new BufferedReader(new FileReader(file.toFile()))) {
+      String line;
+      while ((line = br.readLine()) != null) {
+        String[] parts = line.split(";");
+        if (parts.length < 3) {
+          continue;
+        }
+        String[] strs = parts[0].split(" ");
+        String windowTimeStr = strs[strs.length - 1];
+        String[] sqls = parts[1].substring("OrigQuery:".length() + 1).split("->");
+        String windowVector = parts[2].trim();
+        QueryWindowRecord record = new QueryWindowRecord(
+            Arrays.asList(sqls),
+            windowVector,
+            Long.parseLong(windowTimeStr)
+        );
+        records.add(record);
+      }
+    }
+    catch (FileNotFoundException e) {
+      throw new RuntimeException(e);
+    }
+    catch (IOException e) {
+      throw new RuntimeException(e);
+    }
+    return records;
   }
 }

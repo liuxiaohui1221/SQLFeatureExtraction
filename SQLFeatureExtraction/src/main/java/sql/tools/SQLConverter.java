@@ -7,6 +7,8 @@ import java.util.*;
 import java.util.regex.*;
 import java.util.function.Function;
 
+import static sql.tools.SqlGroupByReplacer.replaceGroupByWithPosition;
+
 public class SQLConverter {
     // 替换规则定义（兼容JDK 1.8）
     private static final List<ReplacementRule> REPLACE_RULES = Arrays.asList(
@@ -40,24 +42,43 @@ public class SQLConverter {
                     Pattern.compile("\\bLIMIT\\s+0\\s*,\\s*(\\d+)"),
                     "LIMIT $1"
             ),
+            new ReplacementRule(
+                Pattern.compile("avg\\((\\w+)\\)"), "sum($1)/count(*)"
+            ),
+            new ReplacementRule(
+                Pattern.compile("FROM\\s+pmone\\w+\\.(\\w+)\\b"),
+                "FROM $1"
+            ),
 
+            new ReplacementRule(
+                Pattern.compile("\\bis_model\\s*=\\s*true\\b"),
+                "is_model = '1'"
+            ),
+            new ReplacementRule(
+                Pattern.compile("\\bis_model\\s*=\\s*false\\b"),
+                "is_model = '0'"
+            ),
             // 规则3: 时间函数toDateTime64转换（使用函数式处理）
             new ReplacementRule(
-                    Pattern.compile("toDateTime64\\(\\s*([\\d]+\\.[\\d]+)\\s*,\\s*3\\s*\\)"),
+                Pattern.compile("toDateTime64\\(\\s*([\\d]+\\.[\\d]*)\\s*,\\s*3\\s*\\)"),
                     new Function<Matcher, String>() {
                         @Override
                         public String apply(Matcher matcher) {
                             String[] parts = matcher.group(1).split("\\.");
                             long seconds = Long.parseLong(parts[0]);
+                          if (parts.length > 1) {
                             int millis = Integer.parseInt(parts[1].substring(0, 3));
                             return String.format("MILLIS_TO_TIMESTAMP(%d * 1000 + %d)", seconds, millis);
+                          } else {
+                            return String.format("MILLIS_TO_TIMESTAMP(%d * 1000)", seconds);
+                          }
                         }
                     }
             ),
 
             // 规则4: 聚合函数转换（sum(dur) -> sum(dur_sum)）
             new ReplacementRule(
-                    Pattern.compile("(sum|avg|min|max|count)\\(([\\w]+)\\)"),
+                Pattern.compile("(sum|min|max)\\(([\\w]+)\\)"),
                     new Function<Matcher, String>() {
                         @Override
                         public String apply(Matcher matcher) {
@@ -76,15 +97,60 @@ public class SQLConverter {
             ),
             // 规则5: 时间窗口函数转换
             new ReplacementRule(
-                    Pattern.compile("toStartOfInterval\\s*\\(\\s*__time\\s*,\\s*INTERVAL\\s*(\\d+)\\s*(day|hour|minute)\\s*,\\s*'([\\w/]+)'\\s*\\)"),
+                Pattern.compile("toStartOfInterval\\s*\\(\\s*__time,\\s*toIntervalDay\\((\\d+)\\),\\s*'([\\w/]+)"
+                                + "'\\s*\\)"),
+                "TIME_FLOOR(__time, 'P$1D')"
+            ),
+            new ReplacementRule(
+                Pattern.compile("toStartOfInterval\\s*\\(\\s*__time,\\s*toIntervalDay\\((\\d+)\\)\\s*\\)"),
+                "TIME_FLOOR(__time, 'P$1D')"
+            ),
+            new ReplacementRule(
+                Pattern.compile("toStartOfInterval\\s*\\(\\s*__time,\\s*toIntervalHour\\((\\d+)\\)\\s*\\)"),
+                "TIME_FLOOR(__time, 'PT$1H')"
+            ),
+            new ReplacementRule(
+                Pattern.compile(
+                    "toStartOfInterval\\s*\\(\\s*__time,\\s*INTERVAL\\s*(\\d+)\\s*(day|hour|minute)\\s*,\\s*'"
+                    + "\\S+'\\)"),
+                new Function<Matcher, String>()
+                {
+                  @Override
+                  public String apply(Matcher matcher)
+                  {
+                    String interval = "P";
+                    switch (matcher.group(2)) {
+                      case "day":
+                        interval += matcher.group(1) + "D";
+                        break;
+                      case "hour":
+                        interval += "T" + matcher.group(1) + "H";
+                        break;
+                      case "minute":
+                        interval += "T" + matcher.group(1) + "M";
+                        break;
+                    }
+                    return String.format("TIME_FLOOR(__time, '%s')", interval);
+                  }
+                }
+            ),
+            new ReplacementRule(
+                Pattern.compile(
+                    "toStartOfInterval\\s*\\(\\s*__time\\s*,\\s*INTERVAL\\s*(\\d+)\\s*(day|hour|minute)\\s*\\)"),
                     new Function<Matcher, String>() {
                         @Override
                         public String apply(Matcher matcher) {
-                            String interval = "P" + matcher.group(1);
+                          String interval = "P";
                             switch(matcher.group(2)) {
-                                case "day": interval += "D"; break;
-                                case "hour": interval += "H"; break;
-                                case "minute": interval += "M"; break;
+                              case "day":
+                                interval += matcher.group(1) + "D";
+                                break;
+                              case "hour":
+                                interval += "T" + matcher.group(1) + "H";
+                                break;
+                              case "minute":
+                                interval += "T" + matcher.group(1) + "M";
+                                break;
                             }
                             return String.format("TIME_FLOOR(__time, '%s')", interval);
                         }
@@ -96,7 +162,7 @@ public class SQLConverter {
                     new Function<Matcher, String>() {
                         @Override
                         public String apply(Matcher matcher) {
-                            return "count(1)";
+                          return "count(1)";
                         }
                     }
             )
@@ -144,17 +210,18 @@ public class SQLConverter {
             matcher.appendTail(sb);
             druidSQL = sb.toString();
         }
-
+      //group by字段名替换为所在位置
+      druidSQL = replaceGroupByWithPosition(druidSQL);
         return druidSQL;
     }
 
     public static void main(String[] args) {
-        String inputSQL = """
-                SELECT (count() - sum(frustrated) - sum(tolerated) * 0.5)/count() AS apdex_RESP, avg(dur) AS dur_RESP, sum(err) AS err_RESP, sum(err_4xx) AS err_4xx_RESP, sum(err_5xx) AS err_5xx_RESP, sum(err)/count() AS err_rate_RESP, sum(fail) AS fail_RESP, sum(fail)/count() AS fail_rate_RESP, sum(frustrated) AS frustrated_RESP, sum(frustrated)/count() AS frustrated_rate_RESP, sum(httperr) AS httperr_RESP, maxOrNull(ts) AS last_time_RESP, sum(neterr) AS neterr_RESP, sum(tolerated) AS slow_RESP, sum(tolerated)/count() AS slow_rate_RESP, count() AS total_RESP, method, path FROM dwm_request_cluster 
-                WHERE (appid = 'pro-api-g10-xingyun') AND (appsysid = 'bda14c5a-82cd-4087-8499-096b29b541c1') AND (group = 'E01090DB3A6CC1BA') AND (ts <= toDateTime64(1684404959.999, 3)) AND (ts >= toDateTime64(1683800100.000, 3)) GROUP BY method, path ORDER BY last_time_RESP DESC LIMIT 0, 1
-                """;
+//        String inputSQL = """
+//            SELECT count(1) AS total_RESP, toStartOfInterval(__time, toIntervalDay(7), 'Asia/Shanghai') AS ts_RESP FROM dwm_request WHERE (appid = 'cbpt-y') AND (__time <= MILLIS_TO_TIMESTAMP(1684400279 * 1000 + 999)) AND (__time >= MILLIS_TO_TIMESTAMP(1683728580 * 1000)) GROUP BY 2 ORDER BY ts_RESP ASC
+//            """;
+      String inputSQL = "SELECT count(1) AS total_RESP, toStartOfInterval(__time, toIntervalHour(1)) AS ts_RESP FROM dwm_request WHERE (appid = 'cbpt-y') AND (__time <= MILLIS_TO_TIMESTAMP(1684400279 * 1000 + 999)) AND (__time >= MILLIS_TO_TIMESTAMP(1684339200 * 1000)) GROUP BY 2 ORDER BY ts_RESP ASC";
+      String outputSQL = convertClickhouseToDruid(inputSQL);
 
-        String outputSQL = convertClickhouseToDruid(inputSQL);
-        System.out.println("Converted Druid SQL:\n" + outputSQL);
+      System.out.println("Converted Druid SQL:\n" + outputSQL);
     }
 }

@@ -45,7 +45,6 @@ public class APMWindowFragmentIntent {
     public List<String> process(Path tsvFile, SchemaParser schParse, boolean includeSelOpConst, boolean isTableGroupSequence,String combineMethod) throws Exception {
         List<String> sqlEncodedList=new ArrayList<>();
         List<QueryRecord> records = loadAndParse(tsvFile, candidateTopTables);
-        records.sort(Comparator.comparing(r -> r.getEventTime()));
 
         switch (slideMode) {
             case FIXED -> sqlEncodedList=processFixedWindows(records, schParse, includeSelOpConst, isTableGroupSequence,combineMethod);

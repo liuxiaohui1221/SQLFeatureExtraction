@@ -20,7 +20,45 @@
 	   <junit.version>5.8.0-RC1</junit.version>
   </properties>
   <dependencies>
-	<!-- https://mvnrepository.com/artifact/com.github.mpkorstanje/simmetrics -->
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.5.13</version>
+		</dependency>
+		<dependency>
+			<groupId>joda-time</groupId>
+			<artifactId>joda-time</artifactId>
+			<version>2.12.7</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.calcite.avatica</groupId>
+			<artifactId>avatica-core</artifactId>
+			<version>1.22.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.apache.httpcomponents</groupId>
+			<artifactId>httpclient</artifactId>
+			<version>4.5.13</version>
+		</dependency>
+		<!-- 完整 Jackson 依赖配置 -->
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-databind</artifactId>
+			<version>2.13.4</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-core</artifactId>
+			<version>2.13.4</version>
+		</dependency>
+		<dependency>
+			<groupId>com.fasterxml.jackson.core</groupId>
+			<artifactId>jackson-annotations</artifactId>
+			<version>2.13.4</version>
+		</dependency>
+
+
+		<!-- https://mvnrepository.com/artifact/com.github.mpkorstanje/simmetrics -->
 	<dependency>
 	    <groupId>com.github.mpkorstanje</groupId>
 	    <artifactId>simmetrics-core</artifactId>
@@ -89,7 +127,13 @@
 		  <version>${junit.version}</version>
 		  <scope>test</scope>
 	  </dependency>
-</dependencies>
+		<dependency>
+			<groupId>org.jetbrains</groupId>
+			<artifactId>annotations</artifactId>
+			<version>24.0.0</version>
+			<scope>compile</scope>
+		</dependency>
+	</dependencies>
 <repositories>
     <!--other repositories if any-->
     <repository>
