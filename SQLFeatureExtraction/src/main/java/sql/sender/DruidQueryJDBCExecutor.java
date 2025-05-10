@@ -30,7 +30,7 @@ public class DruidQueryJDBCExecutor
   private static final AtomicLong totalCost = new AtomicLong(0);
   private static volatile int beforeWindowVector = -1;
   private static final long maxDelayMill = 1000;
-  private static final boolean skipCreateTemplateTask = true;
+  private static final boolean skipCreateTemplateTask = false;
 
   // SQL事件数据结构
   static class SqlEvent implements Comparable<SqlEvent>
@@ -131,7 +131,7 @@ public class DruidQueryJDBCExecutor
     // 将时间戳转换为 Instant（假设时间戳单位是毫秒）
     Instant instant = Instant.ofEpochMilli(timestamp);
     // 转换为系统默认时区的 LocalDateTime
-    return LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+    return LocalDateTime.ofInstant(instant, ZoneOffset.UTC);
   }
   // 文件解析方法
   private static List<SqlEvent> parseSqlFile(Path filePath) throws Exception
@@ -207,16 +207,17 @@ public class DruidQueryJDBCExecutor
           System.out.println(status);
           beforeWindowVector = curVector;
         }
-        boolean enableMaterializedView = true;
-        boolean enableSubQueryReuse = true;
+        boolean enableMaterializedView = false;//预查询结果利用
+        boolean enableSubQueryReuse = false;//启用基于子查询共享的缓存优化
         //默认参数：
-        boolean useResultLevelCache = true;
-        boolean poulateCache = true;
-        boolean useCache = true;
+        boolean useResultLevelCache = true;//结果级别缓存
+        boolean poulateCache = true;//开启缓存存储
+        boolean useCache = false;//segment层级缓存
         // 发送Druid查询
+        Long startTime = null;
         try {
 //          sendToDruid(druidSQL);
-          long startTime = System.currentTimeMillis();
+          startTime = System.currentTimeMillis();
           Map<String, Object> context = new HashMap<>();
           context.put("useApproximateTopN", false);
           context.put("useApproximateCountDistinct", false);
@@ -238,6 +239,10 @@ public class DruidQueryJDBCExecutor
         }
         catch (Exception e) {
           System.out.println("Error sending query to Druid: " + e.getMessage());
+          //统计超时导致的错误
+          if (e.getMessage().contains("Timeout")) {
+            queryCosts.add(String.valueOf(System.currentTimeMillis() - startTime));
+          }
         }
 
         // 调度下一个任务
