@@ -43,7 +43,7 @@ public class SQLConverter {
                     "LIMIT $1"
             ),
             new ReplacementRule(
-                Pattern.compile("avg\\((\\w+)\\)"), "sum($1)/count(*)"
+                Pattern.compile("avg\\((\\w+)\\)"), "sum($1)/sum(\"count\")"
             ),
             new ReplacementRule(
                 Pattern.compile("FROM\\s+pmone\\w+\\.(\\w+)\\b"),
@@ -162,7 +162,7 @@ public class SQLConverter {
                     new Function<Matcher, String>() {
                         @Override
                         public String apply(Matcher matcher) {
-                          return "count(1)";
+                          return "sum(\"count\")";
                         }
                     }
             )

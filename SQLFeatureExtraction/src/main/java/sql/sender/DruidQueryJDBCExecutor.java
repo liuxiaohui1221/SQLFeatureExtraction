@@ -30,7 +30,7 @@ public class DruidQueryJDBCExecutor
   private static final AtomicLong totalCost = new AtomicLong(0);
   private static volatile int beforeWindowVector = -1;
   private static final long maxDelayMill = 1000;
-  private static final boolean skipCreateTemplateTask = false;
+  private static volatile boolean skipCreateTemplateTask = false;
 
   // SQL事件数据结构
   static class SqlEvent implements Comparable<SqlEvent>
@@ -199,6 +199,7 @@ public class DruidQueryJDBCExecutor
             currentIndex,
             currentEvent.sql
         );
+        //clickhouse sql转为druid sql
         String druidSQL=convertClickhouseToDruid(currentEvent.sql);
         //预测并发送预查询模板
         int curVector = currentEvent.windowVector.hashCode();
@@ -207,12 +208,12 @@ public class DruidQueryJDBCExecutor
           System.out.println(status);
           beforeWindowVector = curVector;
         }
-        boolean enableMaterializedView = false;//预查询结果利用
-        boolean enableSubQueryReuse = false;//启用基于子查询共享的缓存优化
+        boolean enableMaterializedView = true;//开启查询下推：传统物化结果利用 或 预查询结果利用
+        boolean enableSubQueryReuse = true;//启用基于子查询共享的缓存优化
         //默认参数：
         boolean useResultLevelCache = true;//结果级别缓存
         boolean poulateCache = true;//开启缓存存储
-        boolean useCache = false;//segment层级缓存
+        boolean useCache = true;//segment层级缓存
         // 发送Druid查询
         Long startTime = null;
         try {
